@@ -40,6 +40,10 @@ with sync_playwright() as p:
         if kind == 'desktop':
             scene = page.evaluate('''() => {const a=makeCity(),b=dynamicGeometry();return {staticVertices:a.length/10,dynamicVertices:b.length/10,aligned:a.length%10===0&&b.length%10===0,finite:[...a.slice(0,3000)].every(Number.isFinite)};}''')
             assert scene['aligned'] and scene['finite'] and scene['staticVertices'] > 30000 and scene['dynamicVertices'] > 1000, scene
+            # Avatar vertices must rotate in world space (not just slide unrotated body boxes).
+            facing = page.evaluate('''() => {const a=new Mesh(),b=new Mesh();humanoid(a,0,0,0,C.shirt,C.skin,0,0,1,0);humanoid(b,0,0,0,C.shirt,C.skin,Math.PI/2,0,1,0);const ext=m=>{let xs=[],zs=[];for(let i=0;i<m.data.length;i+=10){xs.push(m.data[i]);zs.push(m.data[i+2]);}return {x:Math.max(...xs)-Math.min(...xs),z:Math.max(...zs)-Math.min(...zs),finite:m.data.every(Number.isFinite)};};return {front:ext(a),side:ext(b)};}''')
+            assert facing['front']['finite'] and facing['side']['finite'], facing
+            assert abs(facing['front']['x']-facing['side']['x']) > .3, f'Avatar geometry did not rotate: {facing}'
         assert initial['webgl'] or initial['fallback'], 'No renderer active'
         assert not initial['started'], 'Should begin with title overlay'
         assert page.locator('#gameTitle').is_visible()
@@ -57,6 +61,15 @@ with sync_playwright() as p:
             page.keyboard.up('w')
             after=page.evaluate('window.__imInYoCityDebug()')
             assert after['z'] < before['z'] - 1, (before,after)
+            # Regression: camera auto-follow must not steer a rightward strafe into a circle.
+            straight_start=page.evaluate('window.__imInYoCityDebug()')
+            page.keyboard.down('d')
+            page.wait_for_timeout(1150)
+            straight_end=page.evaluate('window.__imInYoCityDebug()')
+            page.keyboard.up('d')
+            assert straight_end['x']-straight_start['x'] > 3, (straight_start, straight_end)
+            assert abs(straight_end['z']-straight_start['z']) < .8, 'Camera feedback bent keyboard movement into a spiral'
+            assert straight_end['cameraYaw'] > .8 and straight_end['heading'] > 1.2, 'Avatar/camera did not follow movement'
         else:
             assert page.locator('#moveJoystick').is_visible(), 'Analog joystick not visible on phone'
             joy=page.locator('#joy-ring').bounding_box()
@@ -66,20 +79,54 @@ with sync_playwright() as p:
             page.mouse.move(x,y)
             page.mouse.down()
             page.mouse.move(x+joy['width']*.33,y,steps=4)
-            page.wait_for_timeout(800)
+            page.wait_for_timeout(1500)
             moved=page.evaluate('window.__imInYoCityDebug()')
             page.mouse.up()
             reset=page.evaluate('window.__imInYoCityDebug()')
-            assert moved['x'] > before['x'] + .5, (before,moved)
-            assert abs(moved['cameraYaw']-before['cameraYaw']) > .05, 'Joystick must turn follow camera'
+            assert moved['x'] > before['x'] + 4, (before,moved)
+            assert abs(moved['z']-before['z']) < .8, 'Camera feedback bent joystick movement into a spiral'
+            assert abs(moved['cameraYaw']-before['cameraYaw']) > .6, 'Joystick must turn follow camera'
+            assert moved['heading'] > 1.2 and moved['gait'] > .7, 'Avatar rotation/walk animation missing'
             assert moved['sprinting'] is True, 'Outer joystick range must activate analog sprint'
             assert reset['inputX']==0 and reset['inputY']==0, 'Joystick stuck'
             assert reset['sprinting'] is False, 'Sprint must reset after pointer release'
-            page.mouse.move(x,y)
-            page.mouse.down()
+            page.wait_for_timeout(300)
+            assert page.evaluate('window.__imInYoCityDebug().gait') < .2, 'Avatar remains in walk cycle after release'
+            page.mouse.move(x,y);page.mouse.down()
             page.mouse.move(x+joy['width']*.12,y,steps=3)
-            assert page.evaluate('window.__imInYoCityDebug().sprinting') is False, 'Gentle joystick movement must remain walking speed'
+            assert page.evaluate('window.__imInYoCityDebug().sprinting') is False, 'Gentle joystick must not sprint'
             page.mouse.up()
+            # Independent right-hand orbit: pitch and yaw both change after a drag.
+            look=page.locator('#lookArea').bounding_box()
+            lx,ly=look['x']+look['width']*.5,look['y']+look['height']*.5
+            before_look=page.evaluate('window.__imInYoCityDebug()')
+            page.mouse.move(lx,ly)
+            page.mouse.down()
+            page.mouse.move(lx+60,ly+35,steps=5)
+            page.mouse.up()
+            after_look=page.evaluate('window.__imInYoCityDebug()')
+            assert after_look['cameraYaw'] > before_look['cameraYaw']+.3, (before_look,after_look)
+            assert after_look['cameraPitch'] > before_look['cameraPitch']+.08, (before_look,after_look)
+            # Real multi-pointer path: left thumb keeps steering while right thumb orbits.
+            session=context.new_cdp_session(page)
+            def touch_point(px,py,identifier):
+                return {'x':int(px),'y':int(py),'id':identifier,'radiusX':1,'radiusY':1,'force':1}
+            def multi_touch(typ,points):
+                session.send('Input.dispatchTouchEvent',{'type':typ,'touchPoints':points})
+            joy_x,joy_y=x,y
+            multi_touch('touchStart',[touch_point(joy_x,joy_y,11)])
+            multi_touch('touchMove',[touch_point(joy_x+40,joy_y,11)])
+            multi_touch('touchStart',[touch_point(joy_x+40,joy_y,11),touch_point(lx,ly,12)])
+            both_start=page.evaluate('window.__imInYoCityDebug()')
+            multi_touch('touchMove',[touch_point(joy_x+40,joy_y,11),touch_point(lx+48,ly-25,12)])
+            page.wait_for_timeout(150)
+            both=page.evaluate('window.__imInYoCityDebug()')
+            assert both['inputX']>.8 and both['cameraYaw']>both_start['cameraYaw']+.25, 'Dual-thumb camera/joystick conflict'
+            # CDP touchEnd lists the contact being released, unlike touchMove.
+            multi_touch('touchEnd',[touch_point(lx+48,ly-25,12)])
+            assert page.evaluate('window.__imInYoCityDebug().inputX')>.8, 'Releasing camera thumb stopped joystick'
+            multi_touch('touchEnd',[])
+            assert page.evaluate('window.__imInYoCityDebug().inputX')==0, 'Joystick stuck after two-touch release'
         page.keyboard.press('f')
         flying=page.evaluate('window.__imInYoCityDebug()')
         assert flying['skyMode'], 'Sky Mode failed'
