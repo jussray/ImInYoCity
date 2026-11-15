@@ -1,0 +1,9 @@
+{
+  "name":"im-in-yo-city",
+  "version":"0.1.0",
+  "private":true,
+  "description":"I'M IN YO CITY: original Philly After Dark 3D vertical slice",
+  "type":"module",
+  "scripts":{"build":"node scripts/build.mjs","preview":"python3 -m http.server 8080","test":"python3 tests/verify_game.py"},
+  "devDependencies":{"@capacitor/android":"^7.4.0","@capacitor/cli":"^7.4.0","@capacitor/core":"^7.4.0"}
+}
