@@ -1,0 +1,33 @@
+name: Philly Game Browser Proof
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test runtime
+        run: |
+          python -m pip install playwright
+          python -m playwright install chromium
+      - name: Validate standalone web bundle
+        run: node scripts/build.mjs
+      - name: Real desktop and mobile-view browser interactions
+        run: python tests/verify_game.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: philly-browser-screenshots
+          path: artifacts/*.png
+          if-no-files-found: warn

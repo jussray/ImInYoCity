@@ -23,7 +23,11 @@ assembled = html.replace('<link rel="stylesheet" href="./src/styles.css">', '<st
 assembled = assembled.replace('<script type="module" src="./src/game.js"></script>', '<script>' + js + '</script>')
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True, executable_path=os.getenv('CHROMIUM_PATH', '/usr/bin/chromium'))
+    chromium = os.getenv('CHROMIUM_PATH') or ('/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None)
+    launch_options = {'headless': True}
+    if chromium:
+        launch_options['executable_path'] = chromium
+    browser = p.chromium.launch(**launch_options)
     results = {}
     for kind, viewport, touch in [('desktop', {'width':1280,'height':720}, False), ('mobile', {'width':390,'height':844}, True)]:
         context = browser.new_context(viewport=viewport, is_mobile=touch, has_touch=touch)
@@ -33,6 +37,9 @@ with sync_playwright() as p:
         page.set_content(assembled, wait_until='domcontentloaded', timeout=20000)
         page.wait_for_function('window.__imInYoCityDebug && window.__imInYoCityDebug().frames > 3', timeout=10000)
         initial = page.evaluate('window.__imInYoCityDebug()')
+        if kind == 'desktop':
+            scene = page.evaluate('''() => {const a=makeCity(),b=dynamicGeometry();return {staticVertices:a.length/10,dynamicVertices:b.length/10,aligned:a.length%10===0&&b.length%10===0,finite:[...a.slice(0,3000)].every(Number.isFinite)};}''')
+            assert scene['aligned'] and scene['finite'] and scene['staticVertices'] > 30000 and scene['dynamicVertices'] > 1000, scene
         assert initial['webgl'] or initial['fallback'], 'No renderer active'
         assert not initial['started'], 'Should begin with title overlay'
         assert page.locator('#gameTitle').is_visible()
