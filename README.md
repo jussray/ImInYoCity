@@ -34,7 +34,7 @@ Use Chromium/WebGL-enabled browser and Python Playwright for the browser test. T
 | Signal pulse | J | PULSE |
 | Journal | M | MISSIONS |
 | Pause | P | PAUSE |
-| Sprint | Shift | Planned analog sprint upgrade |
+| Sprint | Shift | Push the movement joystick near its outer edge |
 
 ## Android / Google Play gate
 
