@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#110e1d" />
+  <meta name="description" content="I'm In Yo City: explore a Philadelphia-inspired 3D neighborhood in a playable first chapter." />
+  <title>I'm In Yo City | Philly Chapter One</title>
+  <style>
+    :root {font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;background:#100e1b}
+    *{box-sizing:border-box}body{margin:0;overflow:hidden;touch-action:none}button{font:inherit;cursor:pointer}
+    #game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+    #scrim{position:fixed;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(12,10,29,.58),transparent 66%),linear-gradient(0deg,rgba(9,8,21,.38),transparent 48%)}
+    #hud{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;padding:clamp(15px,2.4vw,34px);gap:12px}
+    .top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.identity{display:flex;flex-direction:column;gap:4px}.chapter{font-size:10px;letter-spacing:.28em;color:#ffc477;font-weight:800}.brand{font-size:clamp(18px,2.9vw,32px);font-weight:950;letter-spacing:-.045em;line-height:1}
+    .pill{background:rgba(17,15,31,.56);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(14px);border-radius:999px;padding:10px 14px;font-size:12px;color:#eee;display:inline-flex;align-items:center;gap:10px;max-width:315px}
+    #objective{margin-top:12px;align-self:flex-start;max-width:min(440px,85vw);border-left:3px solid #ffbd68;padding:5px 15px;background:linear-gradient(90deg,rgba(16,11,30,.57),transparent);text-shadow:0 2px 12px #181121}
+    #objective strong{display:block;font-size:clamp(15px,2.2vw,22px);line-height:1.2;margin-top:4px}#objective small{color:#e5d9ed;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+    .bottom{margin-top:auto;display:flex;justify-content:space-between;gap:14px;align-items:flex-end}.note{font-size:11px;line-height:1.6;color:#f1e8ee;background:rgba(13,12,27,.58);padding:9px 13px;border-radius:12px;backdrop-filter:blur(8px)}
+    #talk{position:fixed;bottom:17%;left:50%;transform:translateX(-50%);max-width:80vw;text-align:center;background:rgba(13,12,30,.82);border:1px solid #f5c77b;padding:12px 18px;border-radius:14px;box-shadow:0 20px 40px #080612a0;font-size:14px;pointer-events:none}
+    #interact,#audio{pointer-events:auto;color:white;background:rgba(21,18,37,.68);border:1px solid #ffffff5c;border-radius:20px;padding:13px 16px;min-width:78px;backdrop-filter:blur(14px)}#interact{background:linear-gradient(145deg,#dc7e4c,#a63c5e);border:1px solid #ffd09d;font-weight:900;box-shadow:0 10px 30px #501e2e80}button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+    #controls{display:flex;gap:10px;align-items:center;pointer-events:auto}.controlsRight{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+    #joystick{display:none;position:fixed;bottom:max(28px,env(safe-area-inset-bottom));left:25px;width:120px;height:120px;border:2px solid #ffffff50;border-radius:100%;background:rgba(255,255,255,.10);backdrop-filter:blur(8px);touch-action:none;pointer-events:auto;box-shadow:0 8px 32px #0005}
+    #stick{position:absolute;top:50%;left:50%;width:55px;height:55px;border:2px solid #ffe6c2;border-radius:100%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#f5bd77,#bc5d63);box-shadow:0 4px 16px #0008}
+    #intro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 70% 50%,rgba(83,35,63,.15),rgba(6,7,20,.76));z-index:10;padding:24px}
+    #intro article{width:min(520px,100%);text-align:left}#intro .eyebrow{color:#f9ba69;font-size:12px;letter-spacing:.34em;font-weight:900}h1{font-size:clamp(51px,9vw,100px);line-height:.86;letter-spacing:-.085em;margin:18px 0 22px;text-shadow:0 6px 35px #06030a}h1 em{font-style:normal;color:#ffc185}#intro p{font-size:clamp(14px,1.8vw,18px);line-height:1.55;max-width:370px;color:#f2e5e9}#start{background:#ffc185;border:0;color:#201327;border-radius:999px;padding:16px 24px;font-weight:950;letter-spacing:.05em;font-size:14px;box-shadow:0 10px 40px #b8565180;margin-top:16px}
+    #error{position:fixed;inset:0;display:none;place-items:center;z-index:20;color:white;background:#120e22;padding:30px;text-align:center}
+    .hidden{display:none!important}@media (pointer:coarse),(max-width:760px){#joystick{display:block}.bottom{padding-bottom:env(safe-area-inset-bottom)}.note{display:none}.controlsRight{margin-left:auto}#hud{padding:19px 16px}#objective{margin-top:5px;max-width:78vw}#talk{bottom:24%}#interact{min-height:57px;min-width:92px}.pill{font-size:10px;padding:8px 11px}#intro article{padding-bottom:14vh}}
+    @media (prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="3D Philadelphia neighborhood gameplay canvas"></canvas><div id="scrim" aria-hidden="true"></div>
+  <div id="hud" aria-live="polite">
+    <div class="top"><div class="identity"><div class="chapter">PHILLY • CHAPTER 01</div><div class="brand">I'M IN YO CITY</div></div><div class="pill">📍 THE BLOCK <span id="meters">0m</span></div></div>
+    <div id="objective"><small id="step">MISSION 01 / THE INTRODUCTION</small><strong id="goal">Find the neighborhood mural</strong></div>
+    <div class="bottom"><div class="note">WASD / arrows to move · Drag to turn camera · E to interact</div><div class="controlsRight"><button id="audio" type="button" aria-label="Enable sound">♫ Sound off</button><button id="interact" type="button" aria-label="Interact with nearby character or location">INTERACT [E]</button></div></div>
+  </div>
+  <div id="joystick" role="group" aria-label="Movement joystick"><div id="stick" aria-hidden="true"></div></div>
+  <div id="talk" class="hidden" role="status"></div>
+  <div id="intro"><article><div class="eyebrow">JUSS & CO. GAMES PRESENTS</div><h1>I'M IN<br><em>YO CITY.</em></h1><p>A new story on familiar streets. Walk the block, meet your people, and make your first move in Philly.</p><button id="start" type="button">ENTER PHILLY ↗</button><p style="font-size:12px;margin-top:16px;color:#d6bfd1">Playable first chapter · Original fictional characters · Headphones optional</p></article></div>
+  <div id="error" role="alert"><div><h2>3D graphics unavailable</h2><p>This build needs a browser with Canvas support. Try current Chrome on Android or desktop.</p></div></div>
+  <script type="module" src="./src/game.js"></script>
+</body></html>

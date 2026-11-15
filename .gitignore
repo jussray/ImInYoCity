@@ -29,3 +29,9 @@ game28.dta
 
 # Log files
 warnings.log
+
+# Browser game QA artifacts
+artifacts/
+__pycache__/
+.pytest_cache/
+node_modules/
