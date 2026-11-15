@@ -72,7 +72,14 @@ with sync_playwright() as p:
             reset=page.evaluate('window.__imInYoCityDebug()')
             assert moved['x'] > before['x'] + .5, (before,moved)
             assert abs(moved['cameraYaw']-before['cameraYaw']) > .05, 'Joystick must turn follow camera'
+            assert moved['sprinting'] is True, 'Outer joystick range must activate analog sprint'
             assert reset['inputX']==0 and reset['inputY']==0, 'Joystick stuck'
+            assert reset['sprinting'] is False, 'Sprint must reset after pointer release'
+            page.mouse.move(x,y)
+            page.mouse.down()
+            page.mouse.move(x+joy['width']*.12,y,steps=3)
+            assert page.evaluate('window.__imInYoCityDebug().sprinting') is False, 'Gentle joystick movement must remain walking speed'
+            page.mouse.up()
         page.keyboard.press('f')
         flying=page.evaluate('window.__imInYoCityDebug()')
         assert flying['skyMode'], 'Sky Mode failed'
