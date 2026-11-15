@@ -40,6 +40,14 @@ with sync_playwright() as p:
         if kind == 'desktop':
             scene = page.evaluate('''() => {const a=makeCity(),b=dynamicGeometry();return {staticVertices:a.length/10,dynamicVertices:b.length/10,aligned:a.length%10===0&&b.length%10===0,finite:[...a.slice(0,3000)].every(Number.isFinite)};}''')
             assert scene['aligned'] and scene['finite'] and scene['staticVertices'] > 30000 and scene['dynamicVertices'] > 1000, scene
+            details=page.evaluate("""() => {
+              const row=new Mesh(),hall=new Mesh();
+              rowhouseFacade(row,0,0,2.2,4.8,5.5,C.brick);
+              civicHallDetail(hall);
+              return {rowVertices:row.count(),hallVertices:hall.count(),
+                finite:row.data.every(Number.isFinite)&&hall.data.every(Number.isFinite)};
+            }""")
+            assert details['rowVertices'] > 400 and details['hallVertices'] > 600 and details['finite'], details
         assert initial['webgl'] or initial['fallback'], 'No renderer active'
         assert not initial['started'], 'Should begin with title overlay'
         assert page.locator('#gameTitle').is_visible()

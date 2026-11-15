@@ -1,7 +1,7 @@
 name: Philly Game Browser Proof
 on:
   push:
-    branches: [main]
+    branches: [main, game/philly-architecture-pass]
   workflow_dispatch:
 permissions:
   contents: read

@@ -58,7 +58,7 @@ function building(m,x,z,w,d,h,color,kind='regular'){
     if(rnd()>.38)m.box(wx,wy,z-d/2-.017,.6,.76,.045,win,.58);
   }
   if(kind==='shop'){m.box(x,.95,z+d/2+.3,w*.9,.5,.65,C.magenta,.6);m.box(x,1.9,z+d/2+.025,w*.7,.9,.06,C.light,.4);}
-  if(kind==='row'){m.box(x,2,z+d/2+.04,1.5,2.5,.06,tint(color,.63));m.box(x,0,z+d/2+.2,1.15,1.95,.2,C.dark);}
+  if(kind==='row'){m.box(x,2,z+d/2+.04,1.5,2.5,.06,tint(color,.63));m.box(x,0,z+d/2+.2,1.15,1.95,.2,C.dark);rowhouseFacade(m,x,z,w,d,h,color);}
 }
 function tree(m,x,z,s=1){m.box(x,0,z,.3,2.7*s,.3,C.brick);m.orb(x,3*s,z,1.7*s,C.tree,0,4,7);m.orb(x+.7*s,3.1*s,z-.35*s,1.1*s,tint(C.tree,1.16),0,4,6);}
 function streetlamp(m,x,z){m.box(x,0,z,.12,4,.12,C.silver);m.box(x+.45,3.85,z,.95,.14,.12,C.silver);m.orb(x+.84,3.68,z,.22,C.gold,1.4,3,6);}
@@ -67,6 +67,57 @@ function cityHall(m){const x=-18,z=-18;m.plane(x,z,13,13,.15,C.sidewalk);m.box(x
 function market(m){const x=16,z=-16;m.box(x,0,z,9,5,10,C.brick);m.box(x,5,z,10,1.2,11,C.gold);m.box(x,2,z+5.17,8,1.5,.12,C.cyan,.85);for(let i=-3;i<=3;i++)m.box(x+i*.98,.4,z+5.25,.45,1.9,.12,i%2?C.magenta:C.gold,.2);}
 function park(m){m.plane(-3,8,14,15,.13,C.grass);for(const [x,z] of [[-8,3],[-8,12],[2,3],[2,13]])tree(m,x,z,.8);m.box(-2.4,.1,8,4,.35,3,C.silver);m.box(-2.4,.45,8,3.6,.5,2.5,C.violet,.6);m.box(-2.4,.95,8,2.9,.25,2,C.gold,.7);}
 function bridge(m){const z=-28;const x0=42,x1=76;m.box((x0+x1)/2,4.4,z,x1-x0,.8,4.4,C.silver);for(const x of [48,68]){m.box(x,0,z,1.1,20,1.1,C.silver);m.box(x,20,z,4,1.2,2.3,C.silver);for(const side of [-1,1])for(let i=0;i<7;i++){const xx=x+(side*i*2.4),yy=18-Math.sin(i/7*PI/2)*11;m.rod([x,20,z],[xx,Math.max(5,yy),z],.06,C.light,.25);}}m.box(59,4.4,z,32,.13,.18,C.cyan,.9);}
+
+function rowhouseFacade(m,x,z,w,d,h,color){
+  const front=z+d/2,trim=tint(C.white,.85);
+  m.box(x,h-.40,front+.10,w+.15,.22,.24,tint(color,.64));
+  m.box(x,h-.17,front+.12,w+.27,.16,.30,C.silver);
+  m.box(x,h-.07,front+.14,w+.09,.12,.34,C.dark);
+  const sillY=Math.max(2.48,h-2.38);
+  for(const side of [-1,1]){
+    const wx=x+side*w*.255;
+    m.box(wx,sillY,front+.065,w*.22,.91,.10,C.dark);
+    m.box(wx,sillY+.06,front+.13,w*.16,.76,.065,C.light,.15);
+    m.box(wx,sillY,front+.19,.055,.85,.08,trim);
+    m.box(wx,sillY-.13,front+.15,w*.28,.11,.30,C.silver);
+  }
+  m.box(x,.10,front+.43,w*.32,.26,.72,C.tan);
+  m.box(x,0,front+.93,w*.41,.16,.62,C.silver);
+  for(const side of [-1,1]){
+    const rx=x+side*w*.26;
+    m.box(rx,.22,front+.57,.075,.76,.085,C.dark);
+    m.box(rx,.88,front+.65,.075,.12,.64,C.dark);
+  }
+}
+function civicHallDetail(m){
+  const x=-18,z=-18;
+  // 3D cornices, stone arcade, steps, tower clock and rooftop accents.
+  m.box(x,7.1,z,10.6,.37,10.6,C.silver);
+  m.box(x,7.51,z,9.2,.22,9.2,C.gold,.12);
+  m.box(x,18.35,z,5.15,.4,5.1,C.silver);
+  m.box(x,19.1,z,5.8,.33,5.8,C.gold,.2);
+  m.box(x,6.2,z+5.23,9.1,.42,.55,C.gold);
+  for(const dx of [-3.75,-1.88,0,1.88,3.75]){
+    m.box(x+dx,1.15,z+5.24,.22,4.75,.21,C.white);
+    m.box(x+dx,5.88,z+5.27,.48,.27,.39,C.silver);
+  }
+  for(const side of [-1,1]){
+    m.box(x+side*3,2.4,z+5.34,1.03,1.72,.13,C.dark);
+    m.box(x+side*3,2.55,z+5.42,.83,1.35,.08,C.light,.25);
+    m.box(x+side*3,4.3,z+5.4,1.24,.16,.30,C.white);
+  }
+  m.box(x,.02,z+5.73,5.2,.20,1.25,C.silver);
+  m.box(x,.21,z+5.63,4.4,.18,1.05,C.tan);
+  m.orb(x,15.4,z+2.36,.86,C.gold,.30,6,12);
+  m.orb(x,15.4,z+2.88,.61,C.dark,0,5,10);
+  m.rod([x,15.4,z+3.42],[x+.38,15.7,z+3.42],.04,C.white,.2);
+  m.rod([x,15.4,z+3.43],[x-.12,15.87,z+3.43],.04,C.white,.2);
+  for(const dx of [-1.7,1.7]){
+    m.box(x+dx,9.3,z+2.46,.60,2.2,.14,C.dark);
+    m.box(x+dx,9.46,z+2.55,.45,1.85,.08,C.gold,.15);
+  }
+}
+
 function makeCity(){const m=new Mesh();
   m.plane(0,0,240,240,-.22,C.grass);m.plane(60,0,25,240,-.13,C.water,.15);
   for(let i=-6;i<=6;i++){const p=i*12;m.box(p,-.1,0,3,.11,170,C.asphalt);m.box(0,-.095,p,172,.11,3,C.asphalt);for(let k=-7;k<=7;k++){const z=k*12+4;m.plane(p,z,.08,3,.02,C.lane,.3);const x=k*12+4;m.plane(x,p,3,.08,.025,C.lane,.3);}}
@@ -83,7 +134,7 @@ function makeCity(){const m=new Mesh();
       const off=x+3.15;building(m,off,z,2.2,4.8,h*.85,tint(C.brick,.8+rnd()*.25),'row');
     }
   }
-  cityHall(m);market(m);park(m);bridge(m);
+  cityHall(m);civicHallDetail(m);market(m);park(m);bridge(m);
   // Waterfront promenade, street murals, neon market district and the skyline beacon.
   m.box(45,-.02,0,2,.15,160,C.sidewalk);for(let z=-65;z<65;z+=11){streetlamp(m,44,z);m.box(45,.17,z,1,.55,1,C.dark);}
   m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);
