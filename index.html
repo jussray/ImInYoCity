@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#070d1b" />
+  <meta name="description" content="I'm In Yo City: Philadelphia. Explore an original 3D neighborhood, follow the lights, and make the city yours." />
+  <title>I'm In Yo City | Philadelphia</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main id="app" aria-label="I'm In Yo City Philadelphia game">
+    <canvas id="city" aria-label="3D Philadelphia game scene"></canvas>
+    <div id="vignette" aria-hidden="true"></div>
+    <header class="hud" id="hud" hidden>
+      <div class="brand" aria-label="I'm In Yo City Philadelphia">
+        <span class="brand-top">I'M IN YO CITY</span>
+        <span class="brand-bottom">PHILADELPHIA <span class="brand-pulse">●</span> FREE ROAM</span>
+      </div>
+      <div class="status"><span class="status-kicker">NEXT STOP</span><strong id="objective">CITY HALL</strong><span id="distance" class="status-distance">Find the gold marker</span></div>
+      <button id="sound" class="sound" aria-label="Turn sound on or off" aria-pressed="true">♪ <span>ON</span></button>
+    </header>
+
+    <div id="compass" class="compass" hidden><span id="heading">N</span> <i></i> <span>PHL</span></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <div class="controls" id="controls" hidden>
+      <div id="joystick" class="joystick" aria-label="Movement joystick" role="group"><span id="stick" class="stick"></span></div>
+      <div class="control-tip">MOVE <span>•</span> DRAG TO LOOK</div>
+      <div class="action-group"><button id="run" aria-label="Hold to run" class="action run">RUN</button><button id="hop" aria-label="Hop" class="action hop">HOP</button></div>
+    </div>
+
+    <section id="intro" class="intro" aria-labelledby="title">
+      <div class="intro-tint"></div>
+      <div class="intro-content">
+        <div class="eyebrow"><span class="red-dot"></span> THE CITY IS YOURS <span class="rule"></span> VOL. 01</div>
+        <p class="city-prelude">215 <span>///</span> PHILLY AFTER DARK</p>
+        <h1 id="title">I'M IN<br><em>YO CITY</em></h1>
+        <p class="intro-description">From City Hall to the bridge. Find your route. Catch the lights. Own the night.</p>
+        <button id="start" class="start">ENTER PHILLY <span aria-hidden="true">↗</span></button>
+        <p class="starter-hint">WASD / ARROWS ON DESKTOP <span>·</span> JOYSTICK ON MOBILE</p>
+      </div>
+      <div class="intro-footer"><span>PHILADELPHIA, PA</span><span>ORIGINAL 3D GAME PROTOTYPE <b>•</b> CHAPTER 01</span></div>
+    </section>
+    <div id="fallback" class="fallback" hidden role="alert">This device could not start the 3D renderer. Try a browser with WebGL enabled.</div>
+  </main>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
