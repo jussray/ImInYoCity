@@ -80,6 +80,35 @@ with sync_playwright() as p:
             page.mouse.move(x+joy['width']*.12,y,steps=3)
             assert page.evaluate('window.__imInYoCityDebug().sprinting') is False, 'Gentle joystick movement must remain walking speed'
             page.mouse.up()
+        # Regression: interrupted camera drag must restore camera-follow rotation.
+        look_selector = '#lookArea' if kind == 'mobile' else '#game'
+        point_x = viewport['width'] * (.83 if kind == 'mobile' else .18)
+        point_y = viewport['height'] * .44
+        page.evaluate("""selector => {
+            window.__cameraCaptureId = null;
+            document.querySelector(selector).addEventListener('pointerdown',
+                e => { window.__cameraCaptureId = e.pointerId; }, {once: true});
+        }""", look_selector)
+        page.mouse.move(point_x, point_y)
+        page.mouse.down()
+        page.wait_for_function('window.__cameraCaptureId !== null')
+        page.evaluate("""selector => {
+            const surface = document.querySelector(selector);
+            if (!surface.hasPointerCapture(window.__cameraCaptureId))
+                throw Error('Camera capture was not established');
+            surface.releasePointerCapture(window.__cameraCaptureId);
+        }""", look_selector)
+        page.wait_for_timeout(70)
+        camera_before = page.evaluate('window.__imInYoCityDebug().cameraYaw')
+        page.keyboard.down('d')
+        page.wait_for_timeout(600)
+        page.keyboard.up('d')
+        camera_after = page.evaluate('window.__imInYoCityDebug().cameraYaw')
+        page.mouse.up()
+        assert abs(camera_after - camera_before) > .12, (
+            f'{kind}: camera follow stuck after losing pointer capture',
+            camera_before, camera_after
+        )
         page.keyboard.press('f')
         flying=page.evaluate('window.__imInYoCityDebug()')
         assert flying['skyMode'], 'Sky Mode failed'
