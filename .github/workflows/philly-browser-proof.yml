@@ -25,6 +25,8 @@ jobs:
         run: node scripts/build.mjs
       - name: Real desktop and mobile-view browser interactions
         run: python tests/verify_game.py
+      - name: Served service worker freshness and offline boot
+        run: python tests/verify_service_worker.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

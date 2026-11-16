@@ -17,6 +17,7 @@ This is a **stylized first playable vertical slice**, not a PS5-quality producti
 python3 -m http.server 8080
 # http://localhost:8080
 python3 tests/verify_game.py
+python3 tests/verify_service_worker.py   # served sw.js: updates reach players, offline still boots
 node scripts/build.mjs
 ```
 
