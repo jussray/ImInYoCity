@@ -1,7 +1,7 @@
 name: Philly Android API 36 Proof
 on:
   push:
-    branches: [main]
+    branches: [main, fix/camera-line-of-sight]
     paths:
       - package.json
       - capacitor.config.json
