@@ -53,6 +53,20 @@ with sync_playwright() as p:
         page.wait_for_function('window.__imInYoCityDebug().started')
         assert page.locator('#hud').is_visible()
         assert page.locator('#missionTitle').inner_text() == 'Meet Nova at LOVE Park'
+        if kind == 'mobile':
+            hud_rects = page.evaluate("""() => {
+                const rect = selector => {
+                    const r = document.querySelector(selector).getBoundingClientRect();
+                    return {left:r.left, right:r.right, top:r.top, bottom:r.bottom};
+                };
+                return {mission:rect('#chapter'),tools:rect('.hud-tools')};
+            }""")
+            mission_box, tools_box = hud_rects['mission'], hud_rects['tools']
+            overlaps = (mission_box['left'] < tools_box['right']
+                        and mission_box['right'] > tools_box['left']
+                        and mission_box['top'] < tools_box['bottom']
+                        and mission_box['bottom'] > tools_box['top'])
+            assert not overlaps, f'Mobile mission and menu overlap: {hud_rects}'
         page.keyboard.press('e')
         assert page.evaluate('window.__imInYoCityDebug().stage') == 1, 'Nova interaction failed'
         before = page.evaluate('window.__imInYoCityDebug()')
@@ -153,6 +167,19 @@ with sync_playwright() as p:
             width, height = picture.size
             center = picture.crop((int(width*.20), int(height*.31), int(width*.80), int(height*.48)))
             center_contrast = sum(ImageStat.Stat(center).stddev) / 3
+        if kind == 'desktop':
+            # A near-camera building used to cover the entire left flank; check it.
+            with Image.open(capture) as shot:
+                picture = shot.convert('RGB')
+                ww, hh = picture.size
+                left = picture.crop((int(ww*.10), int(hh*.27), int(ww*.41), int(hh*.80)))
+                left_stats = ImageStat.Stat(left)
+                left_brightness = sum(left_stats.mean) / 3
+                left_contrast = sum(left_stats.stddev) / 3
+            assert left_brightness > 24 and left_contrast > 11, (
+                f'Desktop left side obstructed: brightness={left_brightness:.1f}, '
+                f'contrast={left_contrast:.1f}'
+            )
         min_contrast = 18 if kind == 'desktop' else 12
         assert center_contrast > min_contrast, f'{kind}: playfield obscured (center contrast {center_contrast:.2f})'
         camera_state = page.evaluate('window.__imInYoCityDebug()')
