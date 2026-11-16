@@ -1,0 +1,60 @@
+name: Philly Android API 36 Proof
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - capacitor.config.json
+      - scripts/build.mjs
+      - src/**
+      - index.html
+      - assets/**
+      - .github/workflows/philly-android-proof.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unsigned-android-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android 16 SDK and platform build tools
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Install pinned Capacitor 8 packages
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Build existing game without changing gameplay
+        run: npm run build
+      - name: Generate and sync Android container
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Verify target SDK 36 in generated native project
+        run: |
+          grep -Eq 'targetSdkVersion[[:space:]]*=[[:space:]]*36' android/variables.gradle
+          grep -Eq 'compileSdkVersion[[:space:]]*=[[:space:]]*36' android/variables.gradle
+      - name: Compile unsigned-store debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon --console=plain
+      - name: Verify binary target SDK and record digest
+        run: |
+          apk='android/app/build/outputs/apk/debug/app-debug.apk'
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -F "targetSdkVersion:'36'"
+          sha256sum "$apk" | tee android-debug-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: iminyocity-android-api36-debug-not-for-play
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android-debug-sha256.txt
+          if-no-files-found: error
