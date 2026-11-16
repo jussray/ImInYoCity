@@ -1,7 +1,7 @@
 name: Philly Game Browser Proof
 on:
   push:
-    branches: [main]
+    branches: [main, fix/camera-line-of-sight]
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,7 +19,7 @@ jobs:
           node-version: '22'
       - name: Install browser test runtime
         run: |
-          python -m pip install playwright
+          python -m pip install playwright Pillow
           python -m playwright install chromium
       - name: Validate standalone web bundle
         run: node scripts/build.mjs
