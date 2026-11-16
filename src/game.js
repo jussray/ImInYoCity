@@ -57,7 +57,32 @@ class Mesh{
   pyramid(x,y,z,w,h,color,glow=0){const a=[x-w/2,y,z-w/2],b=[x+w/2,y,z-w/2],c=[x+w/2,y,z+w/2],d=[x-w/2,y,z+w/2],top=[x,y+h,z];this.tri(a,b,top,color,glow);this.tri(b,c,top,color,glow);this.tri(c,d,top,color,glow);this.tri(d,a,top,color,glow);}
   count(){return this.data.length/10;}
 }
+// Cached AABBs from the first generated city; the gameplay test may regenerate meshes
+// for geometry inspection, but must not replace the colliders for the live world.
+const cameraSolids=[];
+let captureCameraSolids=true;
+function cameraSolid(x,z,w,d,h){
+ if(captureCameraSolids)cameraSolids.push([x-w/2-.45,0,z-d/2-.45,x+w/2+.45,h+1,z+d/2+.45]);
+}
+// Shorten the camera ray before the nearest building wall, keeping the player visible.
+function visibleCamera(aim,candidate){
+ let safe=1;
+ for(const wall of cameraSolids){
+  let enter=0,exit=1;const delta=[candidate[0]-aim[0],candidate[1]-aim[1],candidate[2]-aim[2]];
+  for(let axis=0;axis<3;axis++){
+   const min=wall[axis],max=wall[axis+3],d=delta[axis];
+   if(Math.abs(d)<1e-7){if(aim[axis]<min||aim[axis]>max){enter=2;break;}continue;}
+   let a=(min-aim[axis])/d,b=(max-aim[axis])/d;
+   if(a>b){const tmp=a;a=b;b=tmp;}
+   enter=Math.max(enter,a);exit=Math.min(exit,b);
+   if(enter>exit)break;
+  }
+  if(enter<=exit&&enter<=1) safe=Math.min(safe,Math.max(.10,enter-.04));
+ }
+ return safe===1?candidate:aim.map((v,i)=>v+(candidate[i]-v)*safe);
+}
 function building(m,x,z,w,d,h,color,kind='regular'){
+  cameraSolid(x,z,w,d,h);
   m.box(x,0.12,z,w,h,d,color);
   m.box(x,h,z,w+.5,.32,d+.5,tint(color,.57));
   if(kind==='tower'){m.box(x,h+.32,z,w*.5,Math.min(8,h*.35),d*.52,tint(color,1.12));m.box(x,h+7,z,.12,4,.12,C.gold,1);}
@@ -72,9 +97,9 @@ function building(m,x,z,w,d,h,color,kind='regular'){
 }
 function tree(m,x,z,s=1){m.box(x,0,z,.3,2.7*s,.3,C.brick);m.orb(x,3*s,z,1.7*s,C.tree,0,4,7);m.orb(x+.7*s,3.1*s,z-.35*s,1.1*s,tint(C.tree,1.16),0,4,6);}
 function streetlamp(m,x,z){m.box(x,0,z,.12,4,.12,C.silver);m.box(x+.45,3.85,z,.95,.14,.12,C.silver);m.orb(x+.84,3.68,z,.22,C.gold,1.4,3,6);}
-function cityHall(m){const x=-18,z=-18;m.plane(x,z,13,13,.15,C.sidewalk);m.box(x,0,z,10,7,10,C.tan);m.box(x,7,z,8,1.1,8,C.gold);m.box(x,8,z,4.7,11,4.5,C.silver);m.box(x,19,z,5.5,2,5.5,C.gold);m.pyramid(x,21,z,4.8,6,C.silver);m.box(x,27,z,.15,4,.15,C.gold,1);m.orb(x,32,z,.65,C.gold,1.6,4,7);
+function cityHall(m){const x=-18,z=-18;cameraSolid(x,z,10,10,22);m.plane(x,z,13,13,.15,C.sidewalk);m.box(x,0,z,10,7,10,C.tan);m.box(x,7,z,8,1.1,8,C.gold);m.box(x,8,z,4.7,11,4.5,C.silver);m.box(x,19,z,5.5,2,5.5,C.gold);m.pyramid(x,21,z,4.8,6,C.silver);m.box(x,27,z,.15,4,.15,C.gold,1);m.orb(x,32,z,.65,C.gold,1.6,4,7);
   for(let i=-1;i<=1;i++){m.box(x+i*3,0,z+5.1,.45,6,.45,C.white);m.box(x+i*3,0,z-5.1,.45,6,.45,C.white);} }
-function market(m){const x=16,z=-16;m.box(x,0,z,9,5,10,C.brick);m.box(x,5,z,10,1.2,11,C.gold);m.box(x,2,z+5.17,8,1.5,.12,C.cyan,.85);for(let i=-3;i<=3;i++)m.box(x+i*.98,.4,z+5.25,.45,1.9,.12,i%2?C.magenta:C.gold,.2);}
+function market(m){const x=16,z=-16;cameraSolid(x,z,9,10,6.5);m.box(x,0,z,9,5,10,C.brick);m.box(x,5,z,10,1.2,11,C.gold);m.box(x,2,z+5.17,8,1.5,.12,C.cyan,.85);for(let i=-3;i<=3;i++)m.box(x+i*.98,.4,z+5.25,.45,1.9,.12,i%2?C.magenta:C.gold,.2);}
 function park(m){m.plane(-3,8,14,15,.13,C.grass);for(const [x,z] of [[-8,3],[-8,12],[2,3],[2,13]])tree(m,x,z,.8);m.box(-2.4,.1,8,4,.35,3,C.silver);m.box(-2.4,.45,8,3.6,.5,2.5,C.violet,.6);m.box(-2.4,.95,8,2.9,.25,2,C.gold,.7);}
 function bridge(m){const z=-28;const x0=42,x1=76;m.box((x0+x1)/2,4.4,z,x1-x0,.8,4.4,C.silver);for(const x of [48,68]){m.box(x,0,z,1.1,20,1.1,C.silver);m.box(x,20,z,4,1.2,2.3,C.silver);for(const side of [-1,1])for(let i=0;i<7;i++){const xx=x+(side*i*2.4),yy=18-Math.sin(i/7*PI/2)*11;m.rod([x,20,z],[xx,Math.max(5,yy),z],.06,C.light,.25);}}m.box(59,4.4,z,32,.13,.18,C.cyan,.9);}
 function makeCity(){const m=new Mesh();
@@ -99,6 +124,7 @@ function makeCity(){const m=new Mesh();
   m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);
   m.box(-9,0,27,8,3.9,4.2,C.brick);m.box(-9,4,27,8,.25,4.4,C.gold);m.box(-9,1,29.2,7,2,.1,C.magenta,.8);
   for(let i=0;i<20;i++){const x=-70+rnd()*115,z=-65+rnd()*125;if((x+3)**2+(z-8)**2<120)continue;streetlamp(m,x,z);}
+  captureCameraSolids=false;
   return new Float32Array(m.data);
 }
 const player={x:-4,z:8.2,y:0,vy:0,heading:0,sky:false,energy:100,rep:0,walk:0,gait:0};
@@ -208,8 +234,9 @@ function renderer(){if(!state.webgl){if(ctx2d)fallbackRenderer();return;}
  const dist=player.sky?15:12;const rise=player.sky?6.5:5.9;
  const desired=[player.x+Math.sin(cameraYaw)*dist,player.y+rise+Math.sin(cameraPitch)*4,player.z+Math.cos(cameraYaw)*dist];
  const follow=1-Math.exp(-renderDt*10);
- camPos=camPos===null?desired.slice():camPos.map((n,i)=>lerp(n,desired[i],follow));
  const aim=[player.x,player.y+(player.sky?2.1:1.65),player.z];
+ const smoothed=camPos===null?desired.slice():camPos.map((n,i)=>lerp(n,desired[i],follow));
+ camPos=visibleCamera(aim,smoothed);
  viewProj=multiply(perspective(deg(67),width/height,.1,260),lookAt(camPos,aim));
  gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  gl.useProgram(shader.p);gl.uniformMatrix4fv(shader.vp,false,viewProj);gl.uniform3fv(shader.camera,camPos);
