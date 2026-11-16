@@ -60,3 +60,21 @@ jobs:
             android/app/build/outputs/apk/debug/app-debug.apk
             android-debug-sha256.txt
           if-no-files-found: error
+      - name: Compile unsigned Android release bundle
+        working-directory: android
+        run: ./gradlew :app:bundleRelease --no-daemon --console=plain
+      - name: Verify unsigned AAB packaging and record digest
+        run: |
+          aab='android/app/build/outputs/bundle/release/app-release.aab'
+          test -s "$aab"
+          unzip -tq "$aab"
+          sha256sum "$aab" | tee android-release-aab-sha256.txt
+          echo "Unsigned AAB only. Physical device verification, Play signing, and Play Console review remain required."
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: iminyocity-android-api36-unsigned-aab-not-for-play
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android-release-aab-sha256.txt
+          if-no-files-found: error
