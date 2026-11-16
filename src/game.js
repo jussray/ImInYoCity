@@ -91,6 +91,17 @@ function visibleCamera(aim,candidate){
 }
 // Prefer the proper chase view; orbit to an unobstructed shoulder when a wall
 // would force a close-up. The camera stays independent of movement's axis basis.
+// Camera eye clearance prevents buildings beside the lens from filling the viewport.
+function cameraClearance(eye){
+ let nearest=Infinity;
+ for(const wall of cameraSolids){
+  const dx=Math.max(wall[0]-eye[0],0,eye[0]-wall[3]);
+  const dy=Math.max(wall[1]-eye[1],0,eye[1]-wall[4]);
+  const dz=Math.max(wall[2]-eye[2],0,eye[2]-wall[5]);
+  nearest=Math.min(nearest,Math.hypot(dx,dy,dz));
+ }
+ return nearest;
+}
 function cameraGoal(aim,dist,rise){
  const offsets=[0,-.45,.45,-.92,.92,-1.52,1.52];
  let goal=null,bestScore=-1e9,bestOffset=0;
@@ -102,7 +113,10 @@ function cameraGoal(aim,dist,rise){
     player.z+Math.cos(cameraYaw+offset)*dist
    ];
    const clear=cameraRayFraction(aim,candidate);
-   const score=clear-.115*Math.abs(offset)-.018*lift-.018*Math.abs(offset-cameraOrbitOffset);
+   // A clean center ray alone is insufficient: a wall beside the eye can hide half
+   // the playfield. Reward generous clearance without ignoring line-of-sight.
+   const clearance=Math.min(5,cameraClearance(candidate));
+   const score=3*clear+.27*clearance-.13*Math.abs(offset)-.018*lift-.025*Math.abs(offset-cameraOrbitOffset);
    if(score>bestScore){bestScore=score;goal=candidate;bestOffset=offset;}
   }
  }
