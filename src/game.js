@@ -57,29 +57,57 @@ class Mesh{
   pyramid(x,y,z,w,h,color,glow=0){const a=[x-w/2,y,z-w/2],b=[x+w/2,y,z-w/2],c=[x+w/2,y,z+w/2],d=[x-w/2,y,z+w/2],top=[x,y+h,z];this.tri(a,b,top,color,glow);this.tri(b,c,top,color,glow);this.tri(c,d,top,color,glow);this.tri(d,a,top,color,glow);}
   count(){return this.data.length/10;}
 }
-// Cached AABBs from the first generated city; the gameplay test may regenerate meshes
-// for geometry inspection, but must not replace the colliders for the live world.
+// Deterministic collision volumes from the scene's first generated world.
 const cameraSolids=[];
 let captureCameraSolids=true;
+let cameraOrbitOffset=0;
 function cameraSolid(x,z,w,d,h){
- if(captureCameraSolids)cameraSolids.push([x-w/2-.45,0,z-d/2-.45,x+w/2+.45,h+1,z+d/2+.45]);
+ if(captureCameraSolids)cameraSolids.push([x-w/2-.10,0,z-d/2-.10,x+w/2+.10,h+.5,z+d/2+.10]);
 }
-// Shorten the camera ray before the nearest building wall, keeping the player visible.
-function visibleCamera(aim,candidate){
+function worldBlocksPlayer(x,z,y){
+ if(y>4)return false;
+ return cameraSolids.some(w=>x>w[0]-.55&&x<w[3]+.55&&z>w[2]-.55&&z<w[5]+.55);
+}
+// Fraction of the clear view line between the avatar and the requested eye.
+function cameraRayFraction(aim,candidate){
  let safe=1;
  for(const wall of cameraSolids){
-  let enter=0,exit=1;const delta=[candidate[0]-aim[0],candidate[1]-aim[1],candidate[2]-aim[2]];
+  let enter=0,exit=1;
   for(let axis=0;axis<3;axis++){
-   const min=wall[axis],max=wall[axis+3],d=delta[axis];
+   const min=wall[axis],max=wall[axis+3],d=candidate[axis]-aim[axis];
    if(Math.abs(d)<1e-7){if(aim[axis]<min||aim[axis]>max){enter=2;break;}continue;}
    let a=(min-aim[axis])/d,b=(max-aim[axis])/d;
    if(a>b){const tmp=a;a=b;b=tmp;}
    enter=Math.max(enter,a);exit=Math.min(exit,b);
    if(enter>exit)break;
   }
-  if(enter<=exit&&enter<=1) safe=Math.min(safe,Math.max(.10,enter-.04));
+  if(enter<=exit&&enter<=1)safe=Math.min(safe,Math.max(0,enter-.035));
  }
- return safe===1?candidate:aim.map((v,i)=>v+(candidate[i]-v)*safe);
+ return safe;
+}
+function visibleCamera(aim,candidate){
+ const safe=cameraRayFraction(aim,candidate);
+ return safe>=1?candidate:aim.map((v,i)=>v+(candidate[i]-v)*Math.max(.07,safe));
+}
+// Prefer the proper chase view; orbit to an unobstructed shoulder when a wall
+// would force a close-up. The camera stays independent of movement's axis basis.
+function cameraGoal(aim,dist,rise){
+ const offsets=[0,-.45,.45,-.92,.92,-1.52,1.52];
+ let goal=null,bestScore=-1e9,bestOffset=0;
+ for(const offset of offsets){
+  for(const lift of [0,5]){
+   const candidate=[
+    player.x+Math.sin(cameraYaw+offset)*dist,
+    player.y+rise+Math.sin(cameraPitch)*4+lift,
+    player.z+Math.cos(cameraYaw+offset)*dist
+   ];
+   const clear=cameraRayFraction(aim,candidate);
+   const score=clear-.115*Math.abs(offset)-.018*lift-.018*Math.abs(offset-cameraOrbitOffset);
+   if(score>bestScore){bestScore=score;goal=candidate;bestOffset=offset;}
+  }
+ }
+ cameraOrbitOffset=bestOffset;
+ return goal;
 }
 function building(m,x,z,w,d,h,color,kind='regular'){
   cameraSolid(x,z,w,d,h);
@@ -232,9 +260,9 @@ function renderer(){if(!state.webgl){if(ctx2d)fallbackRenderer();return;}
  const width=Math.max(1,Math.floor(innerWidth*Math.min(devicePixelRatio||1,1.7))),height=Math.max(1,Math.floor(innerHeight*Math.min(devicePixelRatio||1,1.7)));
  if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height);}
  const dist=player.sky?15:12;const rise=player.sky?6.5:5.9;
- const desired=[player.x+Math.sin(cameraYaw)*dist,player.y+rise+Math.sin(cameraPitch)*4,player.z+Math.cos(cameraYaw)*dist];
- const follow=1-Math.exp(-renderDt*10);
  const aim=[player.x,player.y+(player.sky?2.1:1.65),player.z];
+ const desired=cameraGoal(aim,dist,rise);
+ const follow=1-Math.exp(-renderDt*10);
  const smoothed=camPos===null?desired.slice():camPos.map((n,i)=>lerp(n,desired[i],follow));
  camPos=visibleCamera(aim,smoothed);
  viewProj=multiply(perspective(deg(67),width/height,.1,260),lookAt(camPos,aim));
@@ -253,7 +281,7 @@ function interact(){if(!state.started||state.paused)return;if(state.stage===0&&M
 function fly(){if(!state.started||state.paused)return;if(!player.sky&&player.energy<10){toast('Recharge your flight energy.');return;}player.sky=!player.sky;if(player.sky)player.y=Math.max(player.y,2.5);else player.vy=0;toast(player.sky?'SKY MODE ONLINE • SPACE TO ASCEND':'STREET MODE ENGAGED');sound(player.sky?620:340,.22,'sawtooth',.055);$('skyButton').textContent=player.sky?'LAND':'FLY';}
 function jump(){if(!state.started||state.paused)return;if(player.sky){player.y=clamp(player.y+1.7,2,35);sound(480,.08);}else if(player.y<.05){player.vy=8.2;sound(320,.14,'triangle',.05);}}
 function pulse(){if(!state.started||state.paused)return;if(state.time-pulseAt<.72)return;pulseAt=state.time;state.pulses++;sound(200,.30,'sawtooth',.07);if(state.stage===3){let hit=false;for(const d of drones){if(!d.disabled&&Math.hypot(player.x-d.x,player.z-d.z,player.y+1-d.y)<21){d.disabled=true;state.droneCount++;hit=true;break;}}if(hit){toast(`SIGNAL DRONE DISABLED • ${state.droneCount}/3`);if(state.droneCount===3)stageUp();}else toast('Move closer to a glowing drone.');}else toast('ENERGY PULSE');}
-function reset(){player.x=-4;player.y=0;player.z=8.2;player.vy=0;player.heading=0;player.sky=false;player.energy=100;player.rep=0;player.walk=0;player.gait=0;state.stage=0;state.droneCount=0;state.pulses=0;cameraYaw=0;cameraPitch=.28;lookPointer=null;lookOverrideUntil=0;camPos=null;controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;pulseAt=-100;drones.forEach(d=>d.disabled=false);$('skyButton').textContent='FLY';$('rep').textContent='0000';$('actLabel').textContent=missions[0].act;$('missionTitle').textContent=missions[0].title;$('missionHelp').textContent=missions[0].help;updateJournal();}
+function reset(){player.x=-4;player.y=0;player.z=8.2;player.vy=0;player.heading=0;player.sky=false;player.energy=100;player.rep=0;player.walk=0;player.gait=0;state.stage=0;state.droneCount=0;state.pulses=0;cameraYaw=0;cameraPitch=.28;lookPointer=null;lookOverrideUntil=0;camPos=null;cameraOrbitOffset=0;controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;pulseAt=-100;drones.forEach(d=>d.disabled=false);$('skyButton').textContent='FLY';$('rep').textContent='0000';$('actLabel').textContent=missions[0].act;$('missionTitle').textContent=missions[0].title;$('missionHelp').textContent=missions[0].help;updateJournal();}
 function updateJournal(){$('missionList').innerHTML=missions.slice(0,4).map((m,i)=>`<div class="mission-row ${i<state.stage?'done':''}"><b>${i<state.stage?'✓':i===state.stage?'◆':'○'} 0${i+1}</b><div><strong>${m.title}</strong><small>${m.help}</small></div></div>`).join('');}
 function openJournal(){if(!state.started)return;$('journal').classList.remove('hidden');state.paused=true;}
 function closeJournal(){$('journal').classList.add('hidden');state.paused=false;}
@@ -268,7 +296,10 @@ function update(dt){if(!state.started||state.paused)return;state.time+=dt;const 
   if(controls.basisYaw===null)controls.basisYaw=cameraYaw;
   const basis=controls.basisYaw,x=(Math.cos(basis)*axis.x+Math.sin(basis)*f)/rawSpeed,z=(Math.sin(basis)*axis.x-Math.cos(basis)*f)/rawSpeed;
   const move=player.sky?11.2:(keys.has('shift')||controls.sprint?9:6);
-  player.x=clamp(player.x+x*move*dt*speed,-70,70);player.z=clamp(player.z+z*move*dt*speed,-71,71);
+  const nextX=clamp(player.x+x*move*dt*speed,-70,70),nextZ=clamp(player.z+z*move*dt*speed,-71,71);
+  // Permit sliding along façades rather than walking through solid buildings.
+  if(player.sky||!worldBlocksPlayer(nextX,player.z,player.y))player.x=nextX;
+  if(player.sky||!worldBlocksPlayer(player.x,nextZ,player.y))player.z=nextZ;
   if(!player.sky)player.walk+=dt*move*speed*.28;
   player.heading=angleTo(player.heading,Math.atan2(x,-z),dt*8);
   // Let a manual orbit finish before the follow camera returns behind the avatar.
