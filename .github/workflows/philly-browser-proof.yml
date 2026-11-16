@@ -1,7 +1,7 @@
 name: Philly Game Browser Proof
 on:
   push:
-    branches: [main]
+    branches: [main, fix/camera-pointer-capture]
   workflow_dispatch:
 permissions:
   contents: read
