@@ -153,7 +153,13 @@ with sync_playwright() as p:
             width, height = picture.size
             center = picture.crop((int(width*.20), int(height*.31), int(width*.80), int(height*.48)))
             center_contrast = sum(ImageStat.Stat(center).stddev) / 3
-        assert center_contrast > 6, f'{kind}: playfield obscured (center contrast {center_contrast:.2f})'
+        min_contrast = 18 if kind == 'desktop' else 12
+        assert center_contrast > min_contrast, f'{kind}: playfield obscured (center contrast {center_contrast:.2f})'
+        camera_state = page.evaluate('window.__imInYoCityDebug()')
+        if camera_state['webgl']:
+            eye = camera_state['camPos']
+            gap = ((eye[0]-camera_state['x'])**2+(eye[2]-camera_state['z'])**2)**.5
+            assert gap > 4.5, f'{kind}: follow camera too close to avatar (distance {gap:.2f})'
         assert not errors, f'{kind} JavaScript exceptions: {errors}'
         result=page.evaluate('window.__imInYoCityDebug()')
         results[kind]={k:result[k] for k in ('started','stage','skyMode','webgl','fallback','frames','pulses','cameraYaw','energy')}
