@@ -5,6 +5,7 @@ Local source-tested Playwright != production HTTP, physical GPU, WebGL proof or 
 """
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from PIL import Image, ImageStat
 import json
 import os
 
@@ -144,7 +145,15 @@ with sync_playwright() as p:
         assert page.evaluate('window.__imInYoCityDebug().paused') is True
         page.locator('#resumeButton').click()
         assert page.evaluate('window.__imInYoCityDebug().paused') is False
-        page.screenshot(path=str(ART / f'{kind}-gameplay.png'), animations='disabled')
+        capture = ART / f'{kind}-gameplay.png'
+        page.screenshot(path=str(capture), animations='disabled')
+        # Visual guard: reject a gameplay view occupied by one wall or blank sky.
+        with Image.open(capture) as shot:
+            picture = shot.convert('RGB')
+            width, height = picture.size
+            center = picture.crop((int(width*.20), int(height*.31), int(width*.80), int(height*.48)))
+            center_contrast = sum(ImageStat.Stat(center).stddev) / 3
+        assert center_contrast > 6, f'{kind}: playfield obscured (center contrast {center_contrast:.2f})'
         assert not errors, f'{kind} JavaScript exceptions: {errors}'
         result=page.evaluate('window.__imInYoCityDebug()')
         results[kind]={k:result[k] for k in ('started','stage','skyMode','webgl','fallback','frames','pulses','cameraYaw','energy')}
