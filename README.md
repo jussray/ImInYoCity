@@ -18,6 +18,7 @@ python3 -m http.server 8080
 # http://localhost:8080
 python3 tests/verify_game.py
 python3 tests/verify_service_worker.py   # served sw.js: updates reach players, offline still boots
+python3 tests/verify_camera_clearance.py # camera never inside buildings; flight/landing respect roofs
 node scripts/build.mjs
 ```
 
