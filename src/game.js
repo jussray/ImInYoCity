@@ -109,7 +109,7 @@ function cameraClearance(eye){
  return nearest;
 }
 // Storyboard framing: low over-the-shoulder street view; wider in Sky Mode. Shared with tests.
-const CAMERA_RIG={walkDist:8.2,walkRise:2.5,walkAim:2.0,skyDist:13,skyRise:4.6,skyAim:2.1};
+const CAMERA_RIG={walkDist:8.2,walkRise:2.5,walkAim:2.0,skyDist:13,skyRise:4.6,skyAim:2.1,cinemaDist:6.2,cinemaRise:1.15,cinemaAim:2.5,cinemaPitch:-.1};
 function cameraGoal(aim,dist,rise){
  const offsets=[0,-.45,.45,-.92,.92,-1.52,1.52];
  let goal=null,bestScore=-1e9,bestOffset=0;
@@ -192,7 +192,7 @@ const dronePositions=[{x:25,z:-17,y:10},{x:35,z:-23,y:14},{x:18,z:-29,y:11}];
 const drones=dronePositions.map((d,i)=>({...d,id:i,disabled:false}));
 const controls={x:0,y:0,sprint:false,look:false,basisYaw:null};
 const keys=new Set();
-const state={started:false,paused:false,stage:0,droneCount:0,pulses:0,audio:false,webgl:false,frame:0,zone:'CENTER CITY',time:0,noticeUntil:0};
+const state={cinema:false,started:false,paused:false,stage:0,droneCount:0,pulses:0,audio:false,webgl:false,frame:0,zone:'CENTER CITY',time:0,noticeUntil:0};
 let cameraYaw=0,cameraPitch=.28,lookX=0,lookY=0,lookPointer=null,lookOverrideUntil=0,gl,staticArray,staticBuffer,dynamicBuffer,shader,viewProj,camPos=null,renderDt=1/60,audio=null,musicHandle=null,lastFrame=performance.now(),pulseAt=-100,ctx2d=null;
 const fallbackBuildings=[];const streetPoints=[];
 function compile(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
@@ -300,9 +300,9 @@ function renderer(){if(!state.webgl){if(ctx2d)fallbackRenderer();return;}
 
  const width=Math.max(1,Math.floor(innerWidth*Math.min(devicePixelRatio||1,1.7))),height=Math.max(1,Math.floor(innerHeight*Math.min(devicePixelRatio||1,1.7)));
  if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height);}
- const dist=player.sky?CAMERA_RIG.skyDist:CAMERA_RIG.walkDist;const rise=player.sky?CAMERA_RIG.skyRise:CAMERA_RIG.walkRise;
- const aim=[player.x,player.y+(player.sky?CAMERA_RIG.skyAim:CAMERA_RIG.walkAim),player.z];
- const desired=cameraGoal(aim,dist,rise);
+ const dist=state.cinema?CAMERA_RIG.cinemaDist:player.sky?CAMERA_RIG.skyDist:CAMERA_RIG.walkDist;const rise=state.cinema?CAMERA_RIG.cinemaRise:player.sky?CAMERA_RIG.skyRise:CAMERA_RIG.walkRise;
+ const aim=[player.x,player.y+(state.cinema?CAMERA_RIG.cinemaAim:player.sky?CAMERA_RIG.skyAim:CAMERA_RIG.walkAim),player.z];
+ let desired;if(state.cinema){const y0=cameraYaw,p0=cameraPitch;cameraYaw=y0+Math.sin(state.time*.18)*.55;cameraPitch=CAMERA_RIG.cinemaPitch;desired=cameraGoal(aim,dist,rise);cameraYaw=y0;cameraPitch=p0;}else desired=cameraGoal(aim,dist,rise);
  const follow=1-Math.exp(-renderDt*10);
  const smoothed=camPos===null?desired.slice():camPos.map((n,i)=>lerp(n,desired[i],follow));
  camPos=visibleCamera(aim,smoothed);
@@ -334,7 +334,9 @@ function interact(){if(!state.started||state.paused)return;if(state.stage===0&&M
 function fly(){if(!state.started||state.paused)return;if(!player.sky&&player.energy<10){toast('Recharge your flight energy.');return;}player.sky=!player.sky;if(player.sky)player.y=Math.max(player.y,2.5);else player.vy=0;toast(player.sky?'SKY MODE ONLINE • SPACE TO ASCEND':'STREET MODE ENGAGED');sound(player.sky?620:340,.22,'sawtooth',.055);$('skyButton').textContent=player.sky?'LAND':'FLY';}
 function jump(){if(!state.started||state.paused)return;if(player.sky){player.y=clamp(player.y+1.7,2,35);sound(480,.08);}else if(player.y<groundAt(player.x,player.z,player.y)+.05){player.vy=8.2;sound(320,.14,'triangle',.05);}}
 function pulse(){if(!state.started||state.paused)return;if(state.time-pulseAt<.72)return;pulseAt=state.time;state.pulses++;sound(200,.30,'sawtooth',.07);if(state.stage===3){let hit=false;for(const d of drones){if(!d.disabled&&Math.hypot(player.x-d.x,player.z-d.z,player.y+1-d.y)<21){d.disabled=true;state.droneCount++;hit=true;break;}}if(hit){toast(`SIGNAL DRONE DISABLED • ${state.droneCount}/3`);if(state.droneCount===3)stageUp();}else toast('Move closer to a glowing drone.');}else toast('ENERGY PULSE');}
-function reset(){closeDialogue();player.x=-4;player.y=0;player.z=8.2;player.vy=0;player.heading=0;player.sky=false;player.energy=100;player.rep=0;player.walk=0;player.gait=0;state.stage=0;state.droneCount=0;state.pulses=0;cameraYaw=0;cameraPitch=.28;lookPointer=null;lookOverrideUntil=0;camPos=null;cameraOrbitOffset=0;controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;pulseAt=-100;drones.forEach(d=>d.disabled=false);$('skyButton').textContent='FLY';updateRep();$('actLabel').textContent=missions[0].act;$('missionTitle').textContent=missions[0].title;$('missionHelp').textContent=missions[0].help;updateJournal();if(state.started)measureHud();}
+// Cinema View: film-still framing from the storyboard; HUD off, letterbox on, low hero camera.
+function setCinema(on){if(on&&!state.started)return;state.cinema=on;document.body.classList.toggle('cinema',on);$('letterboxTop').classList.toggle('hidden',!on);$('letterboxBottom').classList.toggle('hidden',!on);if(!on)measureHud();}
+function reset(){closeDialogue();setCinema(false);player.x=-4;player.y=0;player.z=8.2;player.vy=0;player.heading=0;player.sky=false;player.energy=100;player.rep=0;player.walk=0;player.gait=0;state.stage=0;state.droneCount=0;state.pulses=0;cameraYaw=0;cameraPitch=.28;lookPointer=null;lookOverrideUntil=0;camPos=null;cameraOrbitOffset=0;controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;pulseAt=-100;drones.forEach(d=>d.disabled=false);$('skyButton').textContent='FLY';updateRep();$('actLabel').textContent=missions[0].act;$('missionTitle').textContent=missions[0].title;$('missionHelp').textContent=missions[0].help;updateJournal();if(state.started)measureHud();}
 function updateJournal(){$('missionList').innerHTML=missions.slice(0,4).map((m,i)=>`<div class="mission-row ${i<state.stage?'done':''}"><b>${i<state.stage?'✓':i===state.stage?'◆':'○'} 0${i+1}</b><div><strong>${m.title}</strong><small>${m.help}</small></div></div>`).join('');}
 function openJournal(){if(!state.started)return;$('journal').classList.remove('hidden');state.paused=true;}
 function closeJournal(){$('journal').classList.add('hidden');state.paused=false;}
@@ -387,12 +389,13 @@ function setupInput(){const joy=$('moveJoystick'),knob=$('joy-knob');let joyId=n
   target.addEventListener('lostpointercapture',lookEnd);
  }
  $('dialogueContinue').addEventListener('click',closeDialogue);
- window.addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('dialogue').classList.contains('hidden')){closeDialogue();return;}const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(!state.started){if(k==='enter')start(false);return;}if(e.repeat)return;if(k==='f')fly();if(k==='e')interact();if(k==='j')pulse();if(k===' '&&!player.sky)jump();if(k==='m')$('journal').classList.contains('hidden')?openJournal():closeJournal();if(k==='p')pause();});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;lookPointer=null;});
+$('cinemaBtn').addEventListener('click',()=>setCinema(true));$('cinemaExit').addEventListener('click',()=>setCinema(false));
+ window.addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('dialogue').classList.contains('hidden')){closeDialogue();return;}const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(!state.started){if(k==='enter')start(false);return;}if(e.repeat)return;if(k==='f')fly();if(k==='e')interact();if(k==='j')pulse();if(k===' '&&!player.sky)jump();if(k==='m')$('journal').classList.contains('hidden')?openJournal():closeJournal();if(k==='p')pause();if(k==='c')setCinema(!state.cinema);if(k==='escape'&&state.cinema)setCinema(false);});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;lookPointer=null;});
  for(const [id,fn] of [['playSound',()=>start(true)],['playMuted',()=>start(false)],['skyButton',fly],['jumpButton',jump],['pulseButton',pulse],['talkButton',interact],['journalBtn',openJournal],['journalClose',closeJournal],['pauseBtn',pause],['resumeButton',pause],['restart',()=>{reset();closeJournal();toast('STORY RESTARTED');}],['audioBtn',()=>initAudio(!state.audio)]]){$(id).addEventListener('click',e=>{e.preventDefault();fn();});}
 }
 function boot(){updateJournal();try{init3D();}catch(err){console.warn('WebGL init',err);try{if(gl){const fresh=canvas.cloneNode(false);canvas.replaceWith(fresh);canvas=fresh;gl=null;}setupFallback();}catch(fatal){console.error(fatal);$('fatal').classList.remove('hidden');$('playSound').disabled=true;$('playMuted').disabled=true;}}setupInput();requestAnimationFrame(animate);
  // Read-only debugging observations for deterministic browser tests and production diagnostics.
- window.__imInYoCityDebug=()=>({started:state.started,paused:state.paused,stage:state.stage,droneCount:state.droneCount,x:player.x,y:player.y,z:player.z,heading:player.heading,cameraYaw,cameraPitch,basisYaw:controls.basisYaw,gait:player.gait,camPos,skyMode:player.sky,energy:player.energy,webgl:state.webgl,fallback:!!state.fallback,pulses:state.pulses,inputX:controls.x,inputY:controls.y,sprinting:controls.sprint,frames:state.frame,mission:missions[state.stage].title,zone:state.zone,staticVertices:staticArray?.length/10||0});
+ window.__imInYoCityDebug=()=>({cinema:state.cinema,started:state.started,paused:state.paused,stage:state.stage,droneCount:state.droneCount,x:player.x,y:player.y,z:player.z,heading:player.heading,cameraYaw,cameraPitch,basisYaw:controls.basisYaw,gait:player.gait,camPos,skyMode:player.sky,energy:player.energy,webgl:state.webgl,fallback:!!state.fallback,pulses:state.pulses,inputX:controls.x,inputY:controls.y,sprinting:controls.sprint,frames:state.frame,mission:missions[state.stage].title,zone:state.zone,staticVertices:staticArray?.length/10||0});
 }
 boot();
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(err=>console.info('Offline cache unavailable:',err.message)));}

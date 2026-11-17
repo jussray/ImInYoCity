@@ -55,3 +55,16 @@ h1#gameTitle{font-style:italic;transform:skewX(-7deg);transform-origin:left bott
 .sky-touch{display:none!important}
 @media (pointer:coarse),(max-width:800px){#skyHud{left:13px;bottom:200px}.sky-keys{display:none!important}.sky-touch{display:grid!important}}
 @media (max-height:480px){#skyHud{left:50%;top:10px;bottom:auto;transform:translateX(-50%);padding:5px 10px}#skyHud ul{display:none!important}#skyHud strong{font-size:11px}}
+
+/* Cinema View: storyboard film-still framing. */
+body.cinema #hud{display:none!important}
+body.cinema #game{filter:saturate(1.2) contrast(1.08)}
+body.cinema #vignette{background:radial-gradient(ellipse at 50% 50%,transparent 48%,#05021acc 100%)}
+.letterbox{position:fixed;left:0;right:0;height:11vh;min-height:34px;z-index:9;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 max(16px,3vw);background:#000;box-sizing:border-box}
+#letterboxTop{top:0;justify-content:center}
+#letterboxBottom{bottom:0}
+.cine-title{color:#fff4d6;font-style:italic;font-weight:1000;letter-spacing:.22em;font-size:clamp(10px,1.6vw,15px);text-shadow:0 0 18px #a26bff66}
+.cine-title em{color:var(--gold)}
+.cine-hint{color:#9b89ff;font-weight:900;letter-spacing:.3em;font-size:10px}
+#cinemaExit{pointer-events:auto;background:transparent;color:var(--gold);border:1px solid #ffcf5a99;border-radius:999px;padding:7px 14px;font-weight:900;letter-spacing:.12em;font-size:11px;cursor:pointer}
+#cinemaExit:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
