@@ -223,14 +223,17 @@ HTMLCanvasElement.prototype.getContext=function(type,...args){
     fall_page.locator('#playMuted').click()
     fall_page.keyboard.press('e')
     assert fall_page.evaluate('window.__imInYoCityDebug().stage')==1, 'Nova interaction failed in fallback'
-    market = fall_page.evaluate("""() => {
-      player.x=24.7;player.z=-16;player.y=0;cameraYaw=0;
-      controls.basisYaw=0;controls.x=-1;controls.y=0;
-      for(let i=0;i<22;i++)update(.02);
-      controls.x=controls.y=0;controls.basisYaw=null;
-      return {x:player.x,stage:state.stage,inside:worldBlocksPlayer(player.x,player.z,0)};
+    fall_page.evaluate("""() => {
+      player.x=24.7;player.z=-16;player.y=0;cameraYaw=0;controls.basisYaw=null;
     }""")
-    assert market['stage']==2 and 22.15<market['x']<24.7 and not market['inside'], market
+    fall_page.keyboard.down('a')
+    fall_page.wait_for_function('window.__imInYoCityDebug().stage===2', timeout=3000)
+    fall_page.wait_for_timeout(900)  # Continue walking to test that the wall actually stops the avatar.
+    fall_page.keyboard.up('a')
+    market = fall_page.evaluate("""() => ({
+      x:player.x,stage:state.stage,inside:worldBlocksPlayer(player.x,player.z,0)
+    })""")
+    assert market['stage']==2 and 22.14<market['x']<22.3 and not market['inside'], market
     fall_page.screenshot(path=str(ART / 'fallback-collision.png'), animations='disabled')
     assert not fallback_errors and not fall_page.locator('#fatal').is_visible(), fallback_errors
     fall_context.close()
