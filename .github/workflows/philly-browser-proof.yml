@@ -23,6 +23,8 @@ jobs:
           python -m playwright install chromium
       - name: Validate standalone web bundle
         run: node scripts/build.mjs
+      - name: Check bounded game simulation after slow frames
+        run: node tests/verify_timestep.mjs
       - name: Real desktop and mobile-view browser interactions
         run: python tests/verify_game.py
       - name: Served service worker freshness and offline boot
