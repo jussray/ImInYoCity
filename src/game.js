@@ -17,6 +17,7 @@ const C = {
 };
 function rand32(seed) {let n=seed>>>0;return ()=>{n+=0x6D2B79F5;let x=n;x=Math.imul(x^(x>>>15),x|1);x^=x+Math.imul(x^(x>>>7),x|61);return ((x^(x>>>14))>>>0)/4294967296;};}
 const rnd=rand32(215191);
+function hash01(a,b){const v=Math.sin(a*127.1+b*311.7)*43758.5453;return v-Math.floor(v);}
 function mixColor(a,b,t){return a.map((v,i)=>lerp(v,b[i],t));}
 function tint(c,t){return c.map(v=>clamp(v*t,0,1));}
 const V={
@@ -31,7 +32,7 @@ function multiply(a,b){const o=new Float32Array(16);for(let col=0;col<4;col++)fo
 function project(m,x,y,z){const a=m[0]*x+m[4]*y+m[8]*z+m[12],b=m[1]*x+m[5]*y+m[9]*z+m[13],c=m[2]*x+m[6]*y+m[10]*z+m[14],w=m[3]*x+m[7]*y+m[11]*z+m[15];return {x:a/w,y:b/w,z:c/w,w};}
 class Mesh{
   constructor(){this.data=[];}
-  tri(a,b,c,color,glow=0){const n=V.norm(V.cross(V.sub(b,a),V.sub(c,a)));for(const p of [a,b,c])this.data.push(...p,...n,...color,glow);}
+  tri(a,b,c,color,glow=0){const n=V.norm(V.cross(V.sub(b,a),V.sub(c,a))),d=this.data;for(const p of [a,b,c])d.push(p[0],p[1],p[2],n[0],n[1],n[2],color[0],color[1],color[2],glow);}
   quad(a,b,c,d,color,glow=0){this.tri(a,b,c,color,glow);this.tri(a,c,d,color,glow);}
   plane(x,z,w,d,y,color,glow=0){this.quad([x-w/2,y,z-d/2],[x-w/2,y,z+d/2],[x+w/2,y,z+d/2],[x+w/2,y,z-d/2],color,glow);}
   box(x,y,z,w,h,d,color,glow=0){const xa=x-w/2,xb=x+w/2,ya=y,yb=y+h,za=z-d/2,zb=z+d/2;
@@ -142,7 +143,7 @@ function building(m,x,z,w,d,h,color,kind='regular'){
     m.box(wx,wy,z+d/2+.017,.6,.76,.045,win,.72);
     if(rnd()>.38)m.box(wx,wy,z-d/2-.017,.6,.76,.045,win,.58);
   }
-  if(kind==='shop'){m.box(x,.95,z+d/2+.3,w*.9,.5,.65,C.magenta,.6);m.box(x,1.9,z+d/2+.025,w*.7,.9,.06,C.light,.4);}
+  if(kind==='shop'){const blade=hash01(x,z)>.5?C.cyan:C.magenta;m.box(x+w/2-.35,2.2,z+d/2+.42,.14,1.9,.62,blade,1.9);m.box(x+w/2-.35,2.2,z+d/2+.42,.2,1.9,.2,C.dark,0);m.box(x,.95,z+d/2+.3,w*.9,.5,.65,C.magenta,.6);m.box(x,1.9,z+d/2+.025,w*.7,.9,.06,C.light,.4);}
   if(kind==='row'){m.box(x,2,z+d/2+.04,1.5,2.5,.06,tint(color,.63));m.box(x,0,z+d/2+.2,1.15,1.95,.2,C.dark);}
 }
 function tree(m,x,z,s=1){m.box(x,0,z,.3,2.7*s,.3,C.brick);m.orb(x,3*s,z,1.7*s,C.tree,0,4,7);m.orb(x+.7*s,3.1*s,z-.35*s,1.1*s,tint(C.tree,1.16),0,4,6);}
@@ -168,6 +169,8 @@ function makeCity(){const m=new Mesh();
       const off=x+3.15;building(m,off,z,2.2,4.8,h*.85,tint(C.brick,.8+rnd()*.25),'row');
     }
   }
+  for(let i=-6;i<=6;i++)for(let k=0;k<9;k++){const p=i*12,q=-56+k*14+hash01(i,k)*6,c=[C.magenta,C.cyan,C.gold][(i+k+60)%3],o=(hash01(k,i)-.5)*1.6;
+    m.plane(p+o,q,.22,2.6+hash01(i+9,k)*2,.03,tint(c,.55),.55);m.plane(q,p+o,2.6+hash01(k+9,i)*2,.22,.035,tint(c,.55),.55);}
   cityHall(m);market(m);park(m);bridge(m);
   // Waterfront promenade, street murals, neon market district and the skyline beacon.
   m.box(45,-.02,0,2,.15,160,C.sidewalk);for(let z=-65;z<65;z+=11){streetlamp(m,44,z);m.box(45,.17,z,1,.55,1,C.dark);}
@@ -226,6 +229,10 @@ function dynamicGeometry(){const m=new Mesh();const t=state.time;
   nv(0,2.98*sc,0,.62*sc,.07*sc,.12*sc,C.black);nv(-.3*sc,2.5*sc,0,.1*sc,.24*sc,.24*sc,C.cyan,1.2);nv(.3*sc,2.5*sc,0,.1*sc,.24*sc,.24*sc,C.cyan,1.2); // headphones
   nv(-.29*sc,2.3*sc,.06,.05*sc,.14*sc,.14*sc,C.gold,1);nv(.29*sc,2.3*sc,.06,.05*sc,.14*sc,.14*sc,C.gold,1);         // gold hoops
   nv(0,1.62*sc,-.27*sc,.86*sc,.24*sc,.12*sc,C.violet,.2);}                                                         // hood collar
+ {const hoodies=[C.hood,C.jacket,C.magenta,C.violet,C.gold,C.cyan,C.brick];
+  for(let i=0;i<72;i++){const lane=(i%5)-2,side=i%2?2.25:-2.25,sp=.8+hash01(i,3)*.7,dir=i%3?1:-1,z=((hash01(i,1)*110+t*sp*dir)%110+110)%110-55,wx=lane*12+side+(hash01(i,7)-.5)*.5;
+   if(Math.abs(wx-player.x)+Math.abs(z-player.z)>45)continue;  // only build walkers near the player
+   humanoid(m,wx,0,z,hoodies[i%hoodies.length],i%3?C.skin:C.skin2,dir>0?0:Math.PI,t*sp*1.6+i,.66,1);}}
  for(let i=0;i<12;i++){const a=i*2.399,s=15+i*3.5,x=Math.sin(a)*s,z=Math.cos(a)*s;humanoid(m,x+Math.cos(t*.45+i)*.6,0,z+Math.sin(t*.5+i)*.6,i%3?C.silver:C.gold,i%2?C.skin:C.skin2,a,t*.6+i,.65);}
  for(let i=0;i<8;i++){const z=-53+i*13;const x=(((t*7+i*21)%135)-65);m.box(x,.14,z,3.4,.8,1.8,i%3?C.blue:C.magenta);m.box(x,.9,z,.9,.65,1.6,C.dark);m.box(x-1.25,.33,z-.93,.5,.22,.11,C.gold,1.1);m.box(x-1.25,.33,z+.93,.5,.22,.11,C.gold,1.1);m.box(x+1.28,.33,z-.93,.5,.22,.11,C.magenta,1);}
  for(const drone of drones){if(drone.disabled)continue;const y=drone.y+Math.sin(t*2+drone.id)*.7;m.orb(drone.x,y,drone.z,.9,C.violet,1.5,4,6);m.orb(drone.x,y,drone.z,.4,C.cyan,1.3,4,6);m.box(drone.x,y-.12,drone.z,2.6,.14,.2,C.magenta,1);m.box(drone.x,y-.12,drone.z,.2,.14,2.6,C.magenta,1);}
