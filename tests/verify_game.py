@@ -191,6 +191,49 @@ with sync_playwright() as p:
         result=page.evaluate('window.__imInYoCityDebug()')
         results[kind]={k:result[k] for k in ('started','stage','skyMode','webgl','fallback','frames','pulses','cameraYaw','energy')}
         page.close();context.close()
+    # Regression: software-rendered buildings must block movement without
+    # making Reading Terminal's mission impossible to finish on foot.
+    force_fallback = """<script>
+const originalGetContext=HTMLCanvasElement.prototype.getContext;
+HTMLCanvasElement.prototype.getContext=function(type,...args){
+  if(this.id==='game'&&(type==='webgl'||type==='experimental-webgl'))return null;
+  return originalGetContext.call(this,type,...args);
+};
+</script>"""
+    fallback_html = assembled.replace('<script>' + js + '</script>',
+                                      force_fallback + '<script>' + js + '</script>')
+    fall_context = browser.new_context(viewport={'width':390,'height':844}, is_mobile=True, has_touch=True)
+    fall_page = fall_context.new_page()
+    fallback_errors = []
+    fall_page.on('pageerror', lambda e: fallback_errors.append(str(e)))
+    fall_page.set_content(fallback_html, wait_until='domcontentloaded', timeout=20000)
+    fall_page.wait_for_function('window.__imInYoCityDebug && window.__imInYoCityDebug().frames > 3', timeout=10000)
+    solids = fall_page.evaluate("""() => ({
+      fallback: window.__imInYoCityDebug().fallback,
+      buildings: fallbackBuildings.length,
+      solids: cameraSolids.length,
+      marketBlocked: worldBlocksPlayer(16,-16,0),
+      hallBlocked: worldBlocksPlayer(-18,-18,0),
+      relayBlocked: worldBlocksPlayer(29,-28,0),
+      approachClear: !worldBlocksPlayer(23.4,-16,0),
+      spawnClear: !worldBlocksPlayer(-4,8.2,0)
+    })""")
+    assert solids['fallback'] and solids['solids']==solids['buildings'] and solids['solids']>70, solids
+    assert all(solids[k] for k in ('marketBlocked','hallBlocked','relayBlocked','approachClear','spawnClear')), solids
+    fall_page.locator('#playMuted').click()
+    fall_page.keyboard.press('e')
+    assert fall_page.evaluate('window.__imInYoCityDebug().stage')==1, 'Nova interaction failed in fallback'
+    market = fall_page.evaluate("""() => {
+      player.x=24.7;player.z=-16;player.y=0;cameraYaw=0;
+      controls.basisYaw=0;controls.x=-1;controls.y=0;
+      for(let i=0;i<22;i++)update(.02);
+      controls.x=controls.y=0;controls.basisYaw=null;
+      return {x:player.x,stage:state.stage,inside:worldBlocksPlayer(player.x,player.z,0)};
+    }""")
+    assert market['stage']==2 and 22.15<market['x']<24.7 and not market['inside'], market
+    fall_page.screenshot(path=str(ART / 'fallback-collision.png'), animations='disabled')
+    assert not fallback_errors and not fall_page.locator('#fatal').is_visible(), fallback_errors
+    fall_context.close()
     browser.close()
 
 # CPU geometry is separately checked in the browser source path, even if WebGL unavailable.
