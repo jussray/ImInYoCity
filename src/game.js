@@ -1,7 +1,7 @@
 // I'M IN YO CITY / PHILLY AFTER DARK
 // Original procedural WebGL city and interaction loop. No external engines, CDN, or paid assets.
 const $ = (id) => document.getElementById(id);
-const canvas = $('game');
+let canvas = $('game');  // replaced once if WebGL fails after binding the canvas
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const distance2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -354,7 +354,7 @@ function setupInput(){const joy=$('moveJoystick'),knob=$('joy-knob');let joyId=n
  window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(!state.started){if(k==='enter')start(false);return;}if(e.repeat)return;if(k==='f')fly();if(k==='e')interact();if(k==='j')pulse();if(k===' '&&!player.sky)jump();if(k==='m')$('journal').classList.contains('hidden')?openJournal():closeJournal();if(k==='p')pause();});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;lookPointer=null;});
  for(const [id,fn] of [['playSound',()=>start(true)],['playMuted',()=>start(false)],['skyButton',fly],['jumpButton',jump],['pulseButton',pulse],['talkButton',interact],['journalBtn',openJournal],['journalClose',closeJournal],['pauseBtn',pause],['resumeButton',pause],['restart',()=>{reset();closeJournal();toast('STORY RESTARTED');}],['audioBtn',()=>initAudio(!state.audio)]]){$(id).addEventListener('click',e=>{e.preventDefault();fn();});}
 }
-function boot(){setupInput();updateJournal();try{init3D();}catch(err){console.warn('WebGL init',err);try{setupFallback();}catch(fatal){console.error(fatal);$('fatal').classList.remove('hidden');$('playSound').disabled=true;$('playMuted').disabled=true;}}requestAnimationFrame(animate);
+function boot(){updateJournal();try{init3D();}catch(err){console.warn('WebGL init',err);try{if(gl){const fresh=canvas.cloneNode(false);canvas.replaceWith(fresh);canvas=fresh;gl=null;}setupFallback();}catch(fatal){console.error(fatal);$('fatal').classList.remove('hidden');$('playSound').disabled=true;$('playMuted').disabled=true;}}setupInput();requestAnimationFrame(animate);
  // Read-only debugging observations for deterministic browser tests and production diagnostics.
  window.__imInYoCityDebug=()=>({started:state.started,paused:state.paused,stage:state.stage,droneCount:state.droneCount,x:player.x,y:player.y,z:player.z,heading:player.heading,cameraYaw,cameraPitch,basisYaw:controls.basisYaw,gait:player.gait,camPos,skyMode:player.sky,energy:player.energy,webgl:state.webgl,fallback:!!state.fallback,pulses:state.pulses,inputX:controls.x,inputY:controls.y,sprinting:controls.sprint,frames:state.frame,mission:missions[state.stage].title,zone:state.zone,staticVertices:staticArray?.length/10||0});
 }
