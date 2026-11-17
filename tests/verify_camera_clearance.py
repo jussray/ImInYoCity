@@ -54,8 +54,8 @@ SWEEP = r"""(SKY_BYPASS) => {
    if(mode==='fly'&&body){r.flyingInsideBuilding++;if(r.examples.length<8)r.examples.push({kind:'player-inside',x,y,z,tag:body.tag});continue;}
    for(let k=0;k<6;k++){
      cameraYaw=k*Math.PI/3;cameraPitch=.28;cameraOrbitOffset=0;r.states++;
-     const dist=player.sky?15:12,rise=player.sky?6.5:5.9;
-     const aim=[x,y+(player.sky?2.1:1.65),z];
+     const dist=player.sky?CAMERA_RIG.skyDist:CAMERA_RIG.walkDist,rise=player.sky?CAMERA_RIG.skyRise:CAMERA_RIG.walkRise;
+     const aim=[x,y+(player.sky?CAMERA_RIG.skyAim:CAMERA_RIG.walkAim),z];
      const eye=visibleCamera(aim,cameraGoal(aim,dist,rise));
      const hit=hitAt(eye); if(!hit)continue;
      const key=(isDecor(hit)?'decor ':'BUILDING ')+hit.tag; r.byTag[key]=(r.byTag[key]||0)+1;

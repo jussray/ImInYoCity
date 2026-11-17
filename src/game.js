@@ -107,6 +107,8 @@ function cameraClearance(eye){
  }
  return nearest;
 }
+// Storyboard framing: low over-the-shoulder street view; wider in Sky Mode. Shared with tests.
+const CAMERA_RIG={walkDist:8.2,walkRise:2.5,walkAim:2.0,skyDist:13,skyRise:4.6,skyAim:2.1};
 function cameraGoal(aim,dist,rise){
  const offsets=[0,-.45,.45,-.92,.92,-1.52,1.52];
  let goal=null,bestScore=-1e9,bestOffset=0;
@@ -149,7 +151,7 @@ function cityHall(m){const x=-18,z=-18;cameraSolid(x,z,10,10,22);cameraSolid(x,z
   for(let i=-1;i<=1;i++){m.box(x+i*3,0,z+5.1,.45,6,.45,C.white);m.box(x+i*3,0,z-5.1,.45,6,.45,C.white);} }
 function market(m){const x=16,z=-16;cameraSolid(x,z,9,10,6.5);m.box(x,0,z,9,5,10,C.brick);m.box(x,5,z,10,1.2,11,C.gold);m.box(x,2,z+5.17,8,1.5,.12,C.cyan,.85);for(let i=-3;i<=3;i++)m.box(x+i*.98,.4,z+5.25,.45,1.9,.12,i%2?C.magenta:C.gold,.2);}
 function park(m){m.plane(-3,8,14,15,.13,C.grass);for(const [x,z] of [[-8,3],[-8,12],[2,3],[2,13]])tree(m,x,z,.8);m.box(-2.4,.1,8,4,.35,3,C.silver);m.box(-2.4,.45,8,3.6,.5,2.5,C.violet,.6);m.box(-2.4,.95,8,2.9,.25,2,C.gold,.7);}
-function bridge(m){const z=-28;const x0=42,x1=76;m.box((x0+x1)/2,4.4,z,x1-x0,.8,4.4,C.silver);for(const x of [48,68]){m.box(x,0,z,1.1,20,1.1,C.silver);m.box(x,20,z,4,1.2,2.3,C.silver);for(const side of [-1,1])for(let i=0;i<7;i++){const xx=x+(side*i*2.4),yy=18-Math.sin(i/7*PI/2)*11;m.rod([x,20,z],[xx,Math.max(5,yy),z],.06,C.light,.25);}}m.box(59,4.4,z,32,.13,.18,C.cyan,.9);}
+function bridge(m){const z=-28;const x0=42,x1=76;m.box((x0+x1)/2,4.4,z,x1-x0,.8,4.4,C.silver);for(const x of [48,68]){cameraSolid(x,z,4,2.3,20.7);m.box(x,0,z,1.1,20,1.1,C.silver);m.box(x,20,z,4,1.2,2.3,C.silver);for(const side of [-1,1])for(let i=0;i<7;i++){const xx=x+(side*i*2.4),yy=18-Math.sin(i/7*PI/2)*11;m.rod([x,20,z],[xx,Math.max(5,yy),z],.06,C.light,.25);}}m.box(59,4.4,z,32,.13,.18,C.cyan,.9);}
 function makeCity(){const m=new Mesh();
   m.plane(0,0,240,240,-.22,C.grass);m.plane(60,0,25,240,-.13,C.water,.15);
   for(let i=-6;i<=6;i++){const p=i*12;m.box(p,-.1,0,3,.11,170,C.asphalt);m.box(0,-.095,p,172,.11,3,C.asphalt);for(let k=-7;k<=7;k++){const z=k*12+4;m.plane(p,z,.08,3,.02,C.lane,.3);const x=k*12+4;m.plane(x,p,3,.08,.025,C.lane,.3);}}
@@ -291,8 +293,8 @@ function renderer(){if(!state.webgl){if(ctx2d)fallbackRenderer();return;}
 
  const width=Math.max(1,Math.floor(innerWidth*Math.min(devicePixelRatio||1,1.7))),height=Math.max(1,Math.floor(innerHeight*Math.min(devicePixelRatio||1,1.7)));
  if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height);}
- const dist=player.sky?15:12;const rise=player.sky?6.5:5.9;
- const aim=[player.x,player.y+(player.sky?2.1:1.65),player.z];
+ const dist=player.sky?CAMERA_RIG.skyDist:CAMERA_RIG.walkDist;const rise=player.sky?CAMERA_RIG.skyRise:CAMERA_RIG.walkRise;
+ const aim=[player.x,player.y+(player.sky?CAMERA_RIG.skyAim:CAMERA_RIG.walkAim),player.z];
  const desired=cameraGoal(aim,dist,rise);
  const follow=1-Math.exp(-renderDt*10);
  const smoothed=camPos===null?desired.slice():camPos.map((n,i)=>lerp(n,desired[i],follow));
