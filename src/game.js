@@ -169,7 +169,7 @@ function makeCity(){const m=new Mesh();
   cityHall(m);market(m);park(m);bridge(m);
   // Waterfront promenade, street murals, neon market district and the skyline beacon.
   m.box(45,-.02,0,2,.15,160,C.sidewalk);for(let z=-65;z<65;z+=11){streetlamp(m,44,z);m.box(45,.17,z,1,.55,1,C.dark);}
-  cameraSolid(29,-28,8,8,12.15);m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);
+  cameraSolid(29,-28,8,8,12.15);m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);for(const [r,y,n] of [[2.7,13.1,16],[1.9,15.4,12],[1.3,17.6,10]])for(let k=0;k<n;k++){const a=k/n*2*PI;m.box(29+Math.cos(a)*r,y,-28+Math.sin(a)*r,.34,.09,.34,C.cyan,1.9);}
   cameraSolid(-9,27,8,4.4,3.75);m.box(-9,0,27,8,3.9,4.2,C.brick);m.box(-9,4,27,8,.25,4.4,C.gold);m.box(-9,1,29.2,7,2,.1,C.magenta,.8);
   for(let i=0;i<20;i++){const x=-70+rnd()*115,z=-65+rnd()*125;if((x+3)**2+(z-8)**2<120)continue;streetlamp(m,x,z);}
   captureCameraSolids=false;
@@ -203,6 +203,7 @@ function bind(buf){gl.bindBuffer(gl.ARRAY_BUFFER,buf);for(const [loc,count,offse
 function humanoid(m,x,y,z,shirt,skin,angle=0,walk=0,scale=1,gait=1){const swing=Math.sin(walk*8)*.32*gait;const co=Math.cos(angle),si=Math.sin(angle);function bx(dx,yy,dz,w,h,d,c,glow=0){const a=dx*scale,b=dz*scale;m.rotatedBox(x+co*a-si*b,y+yy,z+si*a+co*b,w*scale,h*scale,d*scale,angle,c,glow);}
  bx(0,1.05*scale,0,.82,1.2,.5,shirt);bx(0,2.35*scale,0,.53,.5,.52,skin);bx(0,2.76*scale,-.03,.55,.2,.55,C.dark);bx(-.63,.96*scale+swing*.2,0,.25,.97,.32,shirt);bx(.63,.96*scale-swing*.2,0,.25,.97,.32,shirt);bx(-.23,0,swing*.28,.28,1,.34,C.dark);bx(.23,0,-swing*.28,.28,1,.34,C.dark);bx(-.23,-.04,swing*.3-.12,.36,.2,.5,C.white);bx(.23,-.04,-swing*.3-.12,.36,.2,.5,C.white);
 }
+const skyTrail=[];
 function dynamicGeometry(){const m=new Mesh();const t=state.time;
  // Player's coat, head, shoes and glowing backpack are genuine scene geometry.
  humanoid(m,player.x,player.y,player.z,C.jacket,C.skin,player.heading,player.walk,1,player.gait);
@@ -214,8 +215,15 @@ function dynamicGeometry(){const m=new Mesh();const t=state.time;
  back(0,1.5,.27,.09,.22,.03,C.gold,.95);back(.15,1.46,.27,.09,.16,.03,C.gold,.95);          // crown points
  back(0,.98,-.255,.86,.06,.5,C.hood,.25);                                                   // purple hem trim
  m.rotatedBox(player.x+si*.265,player.y+1.59,player.z-co*.265,.20,.21,.045,player.heading,C.gold,.65);
+ if(player.sky){skyTrail.unshift([player.x,player.y+1.25,player.z]);if(skyTrail.length>18)skyTrail.pop();}else skyTrail.length=0;
+ for(let i=2;i<skyTrail.length;i++){const k=i/skyTrail.length,p=skyTrail[i],sz=.42*(1-k)+.06;m.box(p[0],p[1]-sz/2,p[2],sz,sz,sz,mixColor(C.violet,C.gold,k),1.7);}
  // Mission contacts and civilians wander alongside animated traffic.
- humanoid(m,-2,.08,8,C.magenta,C.skin,.4,t*.25,.85);
+ humanoid(m,-2,.08,8,C.hood,C.skin,.4,t*.25,.85);
+ {const a=.4,sc=.85,ca=Math.cos(a),sa=Math.sin(a),nv=(lat,yy,dep,w,h,d,c,g=0)=>m.rotatedBox(-2+ca*lat-sa*dep,.08+yy,8+sa*lat+ca*dep,w,h,d,a,c,g);
+  nv(0,2.78*sc,0,.72*sc,.38*sc,.7*sc,C.dark);nv(0,3.08*sc,-.05,.5*sc,.26*sc,.5*sc,C.dark);                 // curls
+  nv(0,2.98*sc,0,.62*sc,.07*sc,.12*sc,C.black);nv(-.3*sc,2.5*sc,0,.1*sc,.24*sc,.24*sc,C.cyan,1.2);nv(.3*sc,2.5*sc,0,.1*sc,.24*sc,.24*sc,C.cyan,1.2); // headphones
+  nv(-.29*sc,2.3*sc,.06,.05*sc,.14*sc,.14*sc,C.gold,1);nv(.29*sc,2.3*sc,.06,.05*sc,.14*sc,.14*sc,C.gold,1);         // gold hoops
+  nv(0,1.62*sc,-.27*sc,.86*sc,.24*sc,.12*sc,C.violet,.2);}                                                         // hood collar
  for(let i=0;i<12;i++){const a=i*2.399,s=15+i*3.5,x=Math.sin(a)*s,z=Math.cos(a)*s;humanoid(m,x+Math.cos(t*.45+i)*.6,0,z+Math.sin(t*.5+i)*.6,i%3?C.silver:C.gold,i%2?C.skin:C.skin2,a,t*.6+i,.65);}
  for(let i=0;i<8;i++){const z=-53+i*13;const x=(((t*7+i*21)%135)-65);m.box(x,.14,z,3.4,.8,1.8,i%3?C.blue:C.magenta);m.box(x,.9,z,.9,.65,1.6,C.dark);m.box(x-1.25,.33,z-.93,.5,.22,.11,C.gold,1.1);m.box(x-1.25,.33,z+.93,.5,.22,.11,C.gold,1.1);m.box(x+1.28,.33,z-.93,.5,.22,.11,C.magenta,1);}
  for(const drone of drones){if(drone.disabled)continue;const y=drone.y+Math.sin(t*2+drone.id)*.7;m.orb(drone.x,y,drone.z,.9,C.violet,1.5,4,6);m.orb(drone.x,y,drone.z,.4,C.cyan,1.3,4,6);m.box(drone.x,y-.12,drone.z,2.6,.14,.2,C.magenta,1);m.box(drone.x,y-.12,drone.z,.2,.14,2.6,C.magenta,1);}
@@ -297,7 +305,7 @@ function renderer(){if(!state.webgl){if(ctx2d)fallbackRenderer();return;}
 }
 const NOVA_INTRO="Yo, finally. You in the city. Philly been move different lately — new tech, new players, and someone's tryna take control. You ready to run it with me?";
 let dialogueTimer=0;
-function showDialogue(speaker,line,mission){$('dialogueSpeaker').textContent=speaker;$('dialogueLine').textContent=line;$('missionCardTitle').textContent=mission.title;$('missionCardHelp').textContent=mission.help;$('dialogue').classList.remove('hidden');clearTimeout(dialogueTimer);dialogueTimer=setTimeout(closeDialogue,14000);}
+function showDialogue(speaker,line,mission,label='✦ NEW MISSION',tone=''){$('dialogue').dataset.tone=tone;$('missionCard').querySelector('small').textContent=label;$('dialogueSpeaker').textContent=speaker;$('dialogueLine').textContent=line;$('missionCardTitle').textContent=mission.title;$('missionCardHelp').textContent=mission.help;$('dialogue').classList.remove('hidden');clearTimeout(dialogueTimer);dialogueTimer=setTimeout(closeDialogue,14000);}
 function closeDialogue(){clearTimeout(dialogueTimer);$('dialogue').classList.add('hidden');}
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');state.noticeUntil=performance.now()+2600;}
 function sound(freq,dur=.13,type='sine',volume=.055){if(!state.audio||!audio)return;try{const osc=audio.createOscillator(),gain=audio.createGain(),now=audio.currentTime;osc.type=type;osc.frequency.setValueAtTime(freq,now);osc.frequency.exponentialRampToValueAtTime(Math.max(70,freq*.78),now+dur);gain.gain.setValueAtTime(volume,now);gain.gain.exponentialRampToValueAtTime(.00001,now+dur);osc.connect(gain);gain.connect(audio.destination);osc.start(now);osc.stop(now+dur+.01);}catch{}}
@@ -312,7 +320,7 @@ function measureHud(){const box=sel=>{const e=document.querySelector(sel);if(!e)
  markerBand=[Math.max(110,...tops)+46,Math.min(innerHeight-130,...lows.map(t=>t-46))];if(markerBand[1]<markerBand[0])markerBand[1]=markerBand[0];}
 addEventListener('resize',()=>{if(state.started)measureHud();});
 function updateRep(){$('rep').textContent=String(player.rep).padStart(4,'0');$('levelNum').textContent='LV '+(1+Math.floor(player.rep/500));$('levelBar').firstElementChild.style.width=`${(player.rep%500)/5}%`;}
-function stageUp(){if(state.stage>=4)return;const prev=missions[state.stage];player.rep+=250;state.stage++;const next=missions[state.stage];sound(660,.25,'triangle',.11);sound(880,.5,'sine',.06);toast(`✦ ${prev.done}`);$('actLabel').textContent=next.act;$('missionTitle').textContent=next.title;$('missionHelp').textContent=next.help;updateRep();measureHud();updateJournal();}
+function stageUp(){if(state.stage>=4)return;const prev=missions[state.stage];player.rep+=250;state.stage++;const next=missions[state.stage];sound(660,.25,'triangle',.11);sound(880,.5,'sine',.06);toast(`✦ ${prev.done}`);$('actLabel').textContent=next.act;$('missionTitle').textContent=next.title;$('missionHelp').textContent=next.help;updateRep();measureHud();updateJournal();if(state.stage===4)showDialogue('ACT 1 COMPLETE','The City Opens Up. The signal is yours — Philly is open for free roam.',next,'✦ UNLOCKED','gold');}
 function interact(){if(!state.started||state.paused)return;if(state.stage===0&&Math.hypot(player.x+2,player.z-8)<8){stageUp();showDialogue('NOVA',NOVA_INTRO,missions[state.stage]);}else if(state.stage===0){toast('Get closer to Nova at LOVE Park.');}else{toast(state.stage===4?'You made it. Free roam unlocked!':missions[state.stage].help);}sound(430,.12,'triangle',.06);}
 function fly(){if(!state.started||state.paused)return;if(!player.sky&&player.energy<10){toast('Recharge your flight energy.');return;}player.sky=!player.sky;if(player.sky)player.y=Math.max(player.y,2.5);else player.vy=0;toast(player.sky?'SKY MODE ONLINE • SPACE TO ASCEND':'STREET MODE ENGAGED');sound(player.sky?620:340,.22,'sawtooth',.055);$('skyButton').textContent=player.sky?'LAND':'FLY';}
 function jump(){if(!state.started||state.paused)return;if(player.sky){player.y=clamp(player.y+1.7,2,35);sound(480,.08);}else if(player.y<groundAt(player.x,player.z,player.y)+.05){player.vy=8.2;sound(320,.14,'triangle',.05);}}

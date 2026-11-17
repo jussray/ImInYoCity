@@ -42,3 +42,5 @@ h1#gameTitle{font-style:italic;transform:skewX(-7deg);transform-origin:left bott
 #mini-wrap{border-color:#ffcf5a55;background:#0d0a26cc}
 #compassN{position:absolute;top:3px;left:50%;transform:translateX(-50%);z-index:1;font-size:11px;font-weight:1000;color:#1a1238;background:#ffcf5a;border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;box-shadow:0 0 10px #ffcf5a88}
 @media (pointer:coarse),(max-width:800px){.hud-right .stat:has(#level){position:relative}#level{position:absolute;right:calc(100% + 8px);top:16px;margin:0;flex-wrap:nowrap;white-space:nowrap}#levelBar{width:40px}}
+#dialogue[data-tone=gold] #dialogueSpeaker{background:linear-gradient(90deg,#ffe08a,#ffc845);color:#1a1238}
+#dialogue[data-tone=gold]{border-color:#ffcf5a88;box-shadow:0 14px 40px #000a,0 0 30px #ffcf5a33}

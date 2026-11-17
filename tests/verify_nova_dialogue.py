@@ -78,6 +78,17 @@ with sync_playwright() as p:
         page.screenshot(path=str(ART / f'nova-dialogue-{name}.png'))
         page.locator('#dialogueContinue').click()
         assert not dlg.is_visible(), f'{name}: Continue did not close dialogue'
+        if name == 'desktop':
+            # Storyboard panel 08: finishing Act One opens the completion card (Free Roam unlocked).
+            page.evaluate('stageUp();stageUp();stageUp()')
+            assert page.evaluate(D + '.stage') == 4 and dlg.is_visible(), f'{name}: no Act One completion card'
+            r['actComplete'] = {'speaker': page.locator('#dialogueSpeaker').inner_text(),
+                                'label': page.locator('#missionCard small').inner_text(),
+                                'card': page.locator('#missionCardTitle').inner_text()}
+            assert r['actComplete']['speaker'] == 'ACT 1 COMPLETE' and 'UNLOCKED' in r['actComplete']['label'], r
+            assert r['actComplete']['card'] == page.locator('#missionTitle').inner_text(), r
+            page.screenshot(path=str(ART / 'act-complete-desktop.png'))
+            page.locator('#dialogueContinue').click()
         assert not errors, f'{name}: JavaScript exceptions {errors}'
         r['box'] = {k: round(v) for k, v in box.items()}
         results[name] = r
