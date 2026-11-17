@@ -226,6 +226,12 @@ function setupFallback(){
     fallbackBuildings.push({x,z,w:6,h:z>21?5+seeded()*3:8+seeded()*20,d:6,color:['#345783','#77618c','#7f596e','#8d7990'][Math.floor(seeded()*4)]});
   }
   fallbackBuildings.push({x:-18,z:-18,w:10,d:10,h:24,color:'#c5a27b',label:'CITY HALL'},{x:16,z:-16,w:11,d:11,h:7,color:'#9a5e74',label:'READING TERMINAL'},{x:29,z:-28,w:8,d:8,h:20,color:'#426ba0',label:'ROOFTOP RELAY'});
+  // Rebuild collision from the geometry the fallback actually draws.
+  // Clear partial WebGL registration when software rendering takes over.
+  cameraSolids.length=0;
+  captureCameraSolids=true;
+  for(const b of fallbackBuildings)cameraSolid(b.x,b.z,b.w,b.d,b.h);
+  captureCameraSolids=false;
   state.fallback=true;
   console.info('WebGL unavailable: interactive, labeled 2.5D software rendering fallback active.');
 }
@@ -327,7 +333,7 @@ function update(dt){if(!state.started||state.paused)return;state.time+=dt;const 
  player.gait=lerp(player.gait,speed>.05&&!player.sky?1:0,Math.min(1,dt*9));
  if(player.sky){player.energy=Math.max(0,player.energy-2.2*dt);player.y=clamp(player.y+((keys.has(' ')||keys.has('space')?1:0)-(keys.has('control')?1:0))*8*dt,Math.max(2.3,groundAt(player.x,player.z,player.y)),35);if(player.energy<=0){player.sky=false;player.vy=0;$('skyButton').textContent='FLY';toast('SKY MODE RECHARGING');}}
  else{player.energy=Math.min(100,player.energy+6.5*dt);player.vy-=18*dt;const floor=groundAt(player.x,player.z,player.y);player.y=Math.max(floor,player.y+player.vy*dt);if(player.y===floor)player.vy=0;}
- if(state.stage===1&&distance2(player,missions[1].target)<5.5)stageUp();
+ if(state.stage===1&&distance2(player,missions[1].target)<7.5)stageUp();
  if(state.stage===2&&player.sky&&Math.hypot(player.x-29,player.z+28)<8&&player.y>7)stageUp();
  state.zone=player.z>19?'SOUTH PHILLY':player.x>28?'OLD CITY':player.x<-25?'UNIVERSITY CITY':'CENTER CITY';
  }
