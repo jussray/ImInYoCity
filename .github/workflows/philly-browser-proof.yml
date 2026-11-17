@@ -30,6 +30,8 @@ jobs:
         run: python tests/verify_game.py
       - name: Served service worker freshness and offline boot
         run: python tests/verify_service_worker.py
+      - name: Camera never inside buildings; flight respects building volumes
+        run: python tests/verify_camera_clearance.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

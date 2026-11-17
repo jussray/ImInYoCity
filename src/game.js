@@ -64,9 +64,14 @@ let cameraOrbitOffset=0;
 function cameraSolid(x,z,w,d,h){
  if(captureCameraSolids)cameraSolids.push([x-w/2-.10,0,z-d/2-.10,x+w/2+.10,h+.5,z+d/2+.10]);
 }
+// A volume blocks the player only below its roof; roofs are walkable and landable.
+const roofTop=w=>w[4]-.18;
 function worldBlocksPlayer(x,z,y){
- if(y>4)return false;
- return cameraSolids.some(w=>x>w[0]-.55&&x<w[3]+.55&&z>w[2]-.55&&z<w[5]+.55);
+ return cameraSolids.some(w=>x>w[0]-.55&&x<w[3]+.55&&z>w[2]-.55&&z<w[5]+.55&&y<roofTop(w)-.2);
+}
+function groundAt(x,z,y=Infinity){
+ let g=0;for(const w of cameraSolids)if(x>w[0]&&x<w[3]&&z>w[2]&&z<w[5]&&roofTop(w)<=y+.3)g=Math.max(g,roofTop(w));
+ return g;
 }
 // Fraction of the clear view line between the avatar and the requested eye.
 function cameraRayFraction(aim,candidate){
@@ -127,7 +132,7 @@ function building(m,x,z,w,d,h,color,kind='regular'){
   cameraSolid(x,z,w,d,h);
   m.box(x,0.12,z,w,h,d,color);
   m.box(x,h,z,w+.5,.32,d+.5,tint(color,.57));
-  if(kind==='tower'){m.box(x,h+.32,z,w*.5,Math.min(8,h*.35),d*.52,tint(color,1.12));m.box(x,h+7,z,.12,4,.12,C.gold,1);}
+  if(kind==='tower'){cameraSolid(x,z,w*.5,d*.52,h+.32+Math.min(8,h*.35));m.box(x,h+.32,z,w*.5,Math.min(8,h*.35),d*.52,tint(color,1.12));m.box(x,h+7,z,.12,4,.12,C.gold,1);}
   const cols=Math.max(2,Math.floor(w/1.6)),floors=Math.floor(h/2.3);
   for(let j=0;j<floors;j++) for(let i=0;i<cols;i++){
     if(rnd()>.54)continue;const win=(rnd()>.37?C.gold:C.light),wx=x-w/2+(i+.5)*w/cols,wy=1.4+j*2.25;
@@ -139,7 +144,7 @@ function building(m,x,z,w,d,h,color,kind='regular'){
 }
 function tree(m,x,z,s=1){m.box(x,0,z,.3,2.7*s,.3,C.brick);m.orb(x,3*s,z,1.7*s,C.tree,0,4,7);m.orb(x+.7*s,3.1*s,z-.35*s,1.1*s,tint(C.tree,1.16),0,4,6);}
 function streetlamp(m,x,z){m.box(x,0,z,.12,4,.12,C.silver);m.box(x+.45,3.85,z,.95,.14,.12,C.silver);m.orb(x+.84,3.68,z,.22,C.gold,1.4,3,6);}
-function cityHall(m){const x=-18,z=-18;cameraSolid(x,z,10,10,22);m.plane(x,z,13,13,.15,C.sidewalk);m.box(x,0,z,10,7,10,C.tan);m.box(x,7,z,8,1.1,8,C.gold);m.box(x,8,z,4.7,11,4.5,C.silver);m.box(x,19,z,5.5,2,5.5,C.gold);m.pyramid(x,21,z,4.8,6,C.silver);m.box(x,27,z,.15,4,.15,C.gold,1);m.orb(x,32,z,.65,C.gold,1.6,4,7);
+function cityHall(m){const x=-18,z=-18;cameraSolid(x,z,10,10,22);cameraSolid(x,z,5.5,5.5,26.5);m.plane(x,z,13,13,.15,C.sidewalk);m.box(x,0,z,10,7,10,C.tan);m.box(x,7,z,8,1.1,8,C.gold);m.box(x,8,z,4.7,11,4.5,C.silver);m.box(x,19,z,5.5,2,5.5,C.gold);m.pyramid(x,21,z,4.8,6,C.silver);m.box(x,27,z,.15,4,.15,C.gold,1);m.orb(x,32,z,.65,C.gold,1.6,4,7);
   for(let i=-1;i<=1;i++){m.box(x+i*3,0,z+5.1,.45,6,.45,C.white);m.box(x+i*3,0,z-5.1,.45,6,.45,C.white);} }
 function market(m){const x=16,z=-16;cameraSolid(x,z,9,10,6.5);m.box(x,0,z,9,5,10,C.brick);m.box(x,5,z,10,1.2,11,C.gold);m.box(x,2,z+5.17,8,1.5,.12,C.cyan,.85);for(let i=-3;i<=3;i++)m.box(x+i*.98,.4,z+5.25,.45,1.9,.12,i%2?C.magenta:C.gold,.2);}
 function park(m){m.plane(-3,8,14,15,.13,C.grass);for(const [x,z] of [[-8,3],[-8,12],[2,3],[2,13]])tree(m,x,z,.8);m.box(-2.4,.1,8,4,.35,3,C.silver);m.box(-2.4,.45,8,3.6,.5,2.5,C.violet,.6);m.box(-2.4,.95,8,2.9,.25,2,C.gold,.7);}
@@ -163,8 +168,8 @@ function makeCity(){const m=new Mesh();
   cityHall(m);market(m);park(m);bridge(m);
   // Waterfront promenade, street murals, neon market district and the skyline beacon.
   m.box(45,-.02,0,2,.15,160,C.sidewalk);for(let z=-65;z<65;z+=11){streetlamp(m,44,z);m.box(45,.17,z,1,.55,1,C.dark);}
-  m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);
-  m.box(-9,0,27,8,3.9,4.2,C.brick);m.box(-9,4,27,8,.25,4.4,C.gold);m.box(-9,1,29.2,7,2,.1,C.magenta,.8);
+  cameraSolid(29,-28,8,8,12.15);m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);
+  cameraSolid(-9,27,8,4.4,3.75);m.box(-9,0,27,8,3.9,4.2,C.brick);m.box(-9,4,27,8,.25,4.4,C.gold);m.box(-9,1,29.2,7,2,.1,C.magenta,.8);
   for(let i=0;i<20;i++){const x=-70+rnd()*115,z=-65+rnd()*125;if((x+3)**2+(z-8)**2<120)continue;streetlamp(m,x,z);}
   captureCameraSolids=false;
   return new Float32Array(m.data);
@@ -293,7 +298,7 @@ function initAudio(on){state.audio=on;$('audioBtn').textContent=on?'SOUND ON':'S
 function stageUp(){if(state.stage>=4)return;const prev=missions[state.stage];player.rep+=250;state.stage++;const next=missions[state.stage];sound(660,.25,'triangle',.11);sound(880,.5,'sine',.06);toast(`✦ ${prev.done}`);$('actLabel').textContent=next.act;$('missionTitle').textContent=next.title;$('missionHelp').textContent=next.help;$('rep').textContent=String(player.rep).padStart(4,'0');updateJournal();}
 function interact(){if(!state.started||state.paused)return;if(state.stage===0&&Math.hypot(player.x+2,player.z-8)<8){stageUp();}else if(state.stage===0){toast('Get closer to Nova at LOVE Park.');}else{toast(state.stage===4?'You made it. Free roam unlocked!':missions[state.stage].help);}sound(430,.12,'triangle',.06);}
 function fly(){if(!state.started||state.paused)return;if(!player.sky&&player.energy<10){toast('Recharge your flight energy.');return;}player.sky=!player.sky;if(player.sky)player.y=Math.max(player.y,2.5);else player.vy=0;toast(player.sky?'SKY MODE ONLINE • SPACE TO ASCEND':'STREET MODE ENGAGED');sound(player.sky?620:340,.22,'sawtooth',.055);$('skyButton').textContent=player.sky?'LAND':'FLY';}
-function jump(){if(!state.started||state.paused)return;if(player.sky){player.y=clamp(player.y+1.7,2,35);sound(480,.08);}else if(player.y<.05){player.vy=8.2;sound(320,.14,'triangle',.05);}}
+function jump(){if(!state.started||state.paused)return;if(player.sky){player.y=clamp(player.y+1.7,2,35);sound(480,.08);}else if(player.y<groundAt(player.x,player.z,player.y)+.05){player.vy=8.2;sound(320,.14,'triangle',.05);}}
 function pulse(){if(!state.started||state.paused)return;if(state.time-pulseAt<.72)return;pulseAt=state.time;state.pulses++;sound(200,.30,'sawtooth',.07);if(state.stage===3){let hit=false;for(const d of drones){if(!d.disabled&&Math.hypot(player.x-d.x,player.z-d.z,player.y+1-d.y)<21){d.disabled=true;state.droneCount++;hit=true;break;}}if(hit){toast(`SIGNAL DRONE DISABLED • ${state.droneCount}/3`);if(state.droneCount===3)stageUp();}else toast('Move closer to a glowing drone.');}else toast('ENERGY PULSE');}
 function reset(){player.x=-4;player.y=0;player.z=8.2;player.vy=0;player.heading=0;player.sky=false;player.energy=100;player.rep=0;player.walk=0;player.gait=0;state.stage=0;state.droneCount=0;state.pulses=0;cameraYaw=0;cameraPitch=.28;lookPointer=null;lookOverrideUntil=0;camPos=null;cameraOrbitOffset=0;controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;pulseAt=-100;drones.forEach(d=>d.disabled=false);$('skyButton').textContent='FLY';$('rep').textContent='0000';$('actLabel').textContent=missions[0].act;$('missionTitle').textContent=missions[0].title;$('missionHelp').textContent=missions[0].help;updateJournal();}
 function updateJournal(){$('missionList').innerHTML=missions.slice(0,4).map((m,i)=>`<div class="mission-row ${i<state.stage?'done':''}"><b>${i<state.stage?'✓':i===state.stage?'◆':'○'} 0${i+1}</b><div><strong>${m.title}</strong><small>${m.help}</small></div></div>`).join('');}
@@ -312,16 +317,16 @@ function update(dt){if(!state.started||state.paused)return;state.time+=dt;const 
   const move=player.sky?11.2:(keys.has('shift')||controls.sprint?9:6);
   const nextX=clamp(player.x+x*move*dt*speed,-70,70),nextZ=clamp(player.z+z*move*dt*speed,-71,71);
   // Permit sliding along façades rather than walking through solid buildings.
-  if(player.sky||!worldBlocksPlayer(nextX,player.z,player.y))player.x=nextX;
-  if(player.sky||!worldBlocksPlayer(player.x,nextZ,player.y))player.z=nextZ;
+  if(!worldBlocksPlayer(nextX,player.z,player.y))player.x=nextX;
+  if(!worldBlocksPlayer(player.x,nextZ,player.y))player.z=nextZ;
   if(!player.sky)player.walk+=dt*move*speed*.28;
   player.heading=angleTo(player.heading,Math.atan2(x,-z),dt*8);
   // Let a manual orbit finish before the follow camera returns behind the avatar.
   if(lookPointer===null&&state.time>lookOverrideUntil)cameraYaw=angleTo(cameraYaw,player.heading,dt*2.4);
  }else controls.basisYaw=null;
  player.gait=lerp(player.gait,speed>.05&&!player.sky?1:0,Math.min(1,dt*9));
- if(player.sky){player.energy=Math.max(0,player.energy-2.2*dt);player.y=clamp(player.y+((keys.has(' ')||keys.has('space')?1:0)-(keys.has('control')?1:0))*8*dt,2.3,35);if(player.energy<=0){player.sky=false;player.vy=0;$('skyButton').textContent='FLY';toast('SKY MODE RECHARGING');}}
- else{player.energy=Math.min(100,player.energy+6.5*dt);player.vy-=18*dt;player.y=Math.max(0,player.y+player.vy*dt);if(player.y===0)player.vy=0;}
+ if(player.sky){player.energy=Math.max(0,player.energy-2.2*dt);player.y=clamp(player.y+((keys.has(' ')||keys.has('space')?1:0)-(keys.has('control')?1:0))*8*dt,Math.max(2.3,groundAt(player.x,player.z,player.y)),35);if(player.energy<=0){player.sky=false;player.vy=0;$('skyButton').textContent='FLY';toast('SKY MODE RECHARGING');}}
+ else{player.energy=Math.min(100,player.energy+6.5*dt);player.vy-=18*dt;const floor=groundAt(player.x,player.z,player.y);player.y=Math.max(floor,player.y+player.vy*dt);if(player.y===floor)player.vy=0;}
  if(state.stage===1&&distance2(player,missions[1].target)<5.5)stageUp();
  if(state.stage===2&&player.sky&&Math.hypot(player.x-29,player.z+28)<8&&player.y>7)stageUp();
  state.zone=player.z>19?'SOUTH PHILLY':player.x>28?'OLD CITY':player.x<-25?'UNIVERSITY CITY':'CENTER CITY';
