@@ -72,9 +72,27 @@ with sync_playwright() as p:
                     if hit(m, rect(page, sel)):
                         problems.append(f'marker over {sel} at yaw={yaw} pitch={pitch}')
         assert samples >= 5, f'{name}: marker rarely visible ({samples})'
+        # Storyboard panel 05: Sky Mode badge/hints appear while flying and stay clear of everything.
+        page.keyboard.press('f')
+        page.wait_for_function(D + '.skyMode')
+        page.wait_for_timeout(200)
+        sky = rect(page, '#skyHud')
+        assert sky, f'{name}: Sky Mode HUD not shown while flying'
+        for sel in BLOCKERS + ['#level', '#location', '#lookArea span']:
+            if hit(sky, rect(page, sel)):
+                problems.append(f'#skyHud over {sel}')
+        for yaw in [0, 1.6, 3.2, 4.8]:
+            for pitch in [-0.35, 0.9]:
+                page.evaluate(f'cameraYaw={yaw};cameraPitch={pitch};camPos=null')
+                page.wait_for_timeout(120)
+                if hit(rect(page, '#marker'), sky):
+                    problems.append(f'marker over #skyHud at yaw={yaw} pitch={pitch}')
+        page.keyboard.press('f')
+        page.wait_for_timeout(200)
+        assert not page.locator('#skyHud').is_visible(), f'{name}: Sky Mode HUD stuck after landing'
         assert not problems, f'{name}: {sorted(set(problems))[:6]}'
         assert not errors, f'{name}: JavaScript exceptions {errors}'
-        out[name] = {'markerSamples': samples, 'level': page.locator('#levelNum').inner_text()}
+        out[name] = {'skyHud': {k: round(v) for k, v in sky.items()}, 'markerSamples': samples, 'level': page.locator('#levelNum').inner_text()}
         ctx.close()
     browser.close()
 print(json.dumps({'status': 'PASS', 'views': out}, indent=1))

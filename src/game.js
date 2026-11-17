@@ -317,8 +317,8 @@ function initAudio(on){state.audio=on;$('audioBtn').textContent=on?'SOUND ON':'S
 // Marker stays in the open playfield: below the top HUD, above the bottom controls/minimap.
 let markerBand=[110,9999];
 function measureHud(){const box=sel=>{const e=document.querySelector(sel);if(!e)return null;const r=e.getBoundingClientRect();return r.width&&r.height?r:null;};
- const tops=['.hud-tools','#chapter','.hud-right'].map(box).filter(Boolean).map(r=>r.bottom);
- const lows=['#moveJoystick','#actionButtons','#mini-wrap'].map(box).filter(Boolean).map(r=>r.top);
+ const rects=['.hud-tools','#chapter','.hud-right','#moveJoystick','#actionButtons','#mini-wrap','#skyHud'].map(box).filter(Boolean);
+ const tops=rects.filter(r=>r.top+r.height/2<innerHeight/2).map(r=>r.bottom),lows=rects.filter(r=>r.top+r.height/2>=innerHeight/2).map(r=>r.top);
  markerBand=[Math.max(110,...tops)+46,Math.min(innerHeight-130,...lows.map(t=>t-46))];if(markerBand[1]<markerBand[0])markerBand[1]=markerBand[0];}
 addEventListener('resize',()=>{if(state.started)measureHud();});
 function updateRep(){$('rep').textContent=String(player.rep).padStart(4,'0');$('levelNum').textContent='LV '+(1+Math.floor(player.rep/500));$('levelBar').firstElementChild.style.width=`${(player.rep%500)/5}%`;}
@@ -363,7 +363,8 @@ function minimap(){const cv=$('minimap'),ctx=cv.getContext('2d'),s=156,scale=1.1
  ctx.fillStyle='#275b75';ctx.fillRect(s/2+(48-player.x)*scale,0,22*scale,s);
  const target=missions[state.stage].target;if(target){const x=s/2+(target.x-player.x)*scale,y=s/2+(target.z-player.z)*scale;ctx.fillStyle='#ffd67a';ctx.beginPath();ctx.arc(x,y,4,0,2*PI);ctx.fill();}
  ctx.save();ctx.translate(s/2,s/2);ctx.rotate(player.heading);ctx.fillStyle='#d1faff';ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(-5,6);ctx.lineTo(5,6);ctx.closePath();ctx.fill();ctx.restore();}
-function updateHUD(){if(!state.started)return;$('district').textContent=state.zone;$('zone').textContent=state.zone;$('energy').firstElementChild.style.width=`${player.energy.toFixed(0)}%`;$('objectiveProgress').textContent=state.stage===3?`${state.droneCount} / 3 DRONES DISABLED`:state.stage===4?'OPEN WORLD UNLOCKED':'';
+let skyHudShown=false;
+function updateHUD(){if(!state.started)return;if(player.sky!==skyHudShown){skyHudShown=player.sky;$('skyHud').classList.toggle('hidden',!skyHudShown);measureHud();}$('district').textContent=state.zone;$('zone').textContent=state.zone;$('energy').firstElementChild.style.width=`${player.energy.toFixed(0)}%`;$('objectiveProgress').textContent=state.stage===3?`${state.droneCount} / 3 DRONES DISABLED`:state.stage===4?'OPEN WORLD UNLOCKED':'';
  const target=missions[state.stage].target;if(!target){$('marker').classList.add('hidden');}else{const v=state.webgl?project(viewProj,target.x,target.y+2,target.z):screenProject(target.x,target.y+2,target.z);const dist=Math.hypot(player.x-target.x,player.z-target.z);$('marker').classList.remove('hidden');const x=clamp(state.webgl?(v.x*.5+.5)*innerWidth:v.x,125,innerWidth-125),y=clamp(state.webgl?(1-(v.y*.5+.5))*innerHeight:v.y,markerBand[0],markerBand[1]);const behind=state.webgl?v.w<=0:!v.visible;$('marker').style.left=`${behind?innerWidth/2:x}px`;$('marker').style.top=`${behind?innerHeight*.52:y}px`;$('markerName').textContent=target.name;$('markerDistance').textContent=`${Math.round(dist)}m`;}if(state.frame%7===0)minimap();if(state.noticeUntil&&performance.now()>state.noticeUntil){$('toast').classList.remove('show');state.noticeUntil=0;}}
 function animate(now){const elapsed=clamp((now-lastFrame)/1000,0,.25);lastFrame=now;renderDt=elapsed;try{for(let left=elapsed;left>0.000001;){const step=Math.min(left,.05);update(step);left-=step;}renderer();state.frame++;if(state.frame%2===0)updateHUD();}catch(err){console.error('Render failure',err);$('fatal').textContent='3D renderer error: '+err.message;$('fatal').classList.remove('hidden');state.webgl=false;}requestAnimationFrame(animate);}
 function setupInput(){const joy=$('moveJoystick'),knob=$('joy-knob');let joyId=null;

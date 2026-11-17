@@ -44,3 +44,14 @@ h1#gameTitle{font-style:italic;transform:skewX(-7deg);transform-origin:left bott
 @media (pointer:coarse),(max-width:800px){.hud-right .stat:has(#level){position:relative}#level{position:absolute;right:calc(100% + 8px);top:16px;margin:0;flex-wrap:nowrap;white-space:nowrap}#levelBar{width:40px}}
 #dialogue[data-tone=gold] #dialogueSpeaker{background:linear-gradient(90deg,#ffe08a,#ffc845);color:#1a1238}
 #dialogue[data-tone=gold]{border-color:#ffcf5a88;box-shadow:0 14px 40px #000a,0 0 30px #ffcf5a33}
+
+/* Storyboard panel 05: Sky Mode badge + real flight controls (no Boost: it doesn't exist). */
+#skyHud{position:absolute;left:25px;bottom:64px;padding:10px 13px;border:1px solid #9b89ff88;border-left:3px solid var(--gold);border-radius:10px;background:linear-gradient(135deg,#0d0a2ef0,#1d1148e6);box-shadow:0 0 24px #7a5cff44;pointer-events:none}
+#skyHud strong{display:block;color:var(--gold);font-size:13px;font-weight:1000;letter-spacing:.14em;font-style:italic;text-shadow:0 0 12px #ffcf5a77}
+#skyHud strong small{color:#e8e1ff;font-size:10px;letter-spacing:.1em}
+#skyHud ul{list-style:none;margin:7px 0 0;padding:0;display:grid;gap:4px}
+#skyHud li{display:flex;align-items:center;gap:8px;color:#e8e1ff;font-size:11px;font-weight:800;letter-spacing:.06em}
+#skyHud kbd{min-width:42px;text-align:center;font:inherit;font-size:10px;color:var(--cyan);border:1px solid #88e9f799;border-radius:5px;padding:2px 5px;background:#0a1430}
+.sky-touch{display:none!important}
+@media (pointer:coarse),(max-width:800px){#skyHud{left:13px;bottom:200px}.sky-keys{display:none!important}.sky-touch{display:grid!important}}
+@media (max-height:480px){#skyHud{left:50%;top:10px;bottom:auto;transform:translateX(-50%);padding:5px 10px}#skyHud ul{display:none!important}#skyHud strong{font-size:11px}}
