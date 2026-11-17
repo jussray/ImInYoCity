@@ -1,7 +1,8 @@
 name: Philly Game Browser Proof
 on:
   push:
-    branches: [main, fix/camera-line-of-sight]
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
