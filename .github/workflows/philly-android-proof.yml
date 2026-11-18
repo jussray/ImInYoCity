@@ -79,6 +79,13 @@ jobs:
           aab='android/app/build/outputs/bundle/release/app-release.aab'
           test -s "$aab"
           unzip -tq "$aab"
+          # Check that the release bundle carries the same game CI just built.
+          # A valid AAB containing stale or missing gameplay code must fail.
+          for source in index.html src/game.js src/styles.css sw.js; do
+            bundle_path="base/assets/public/$source"
+            unzip -Z1 "$aab" | grep -Fx "$bundle_path"
+            cmp "www/$source" <(unzip -p "$aab" "$bundle_path")
+          done
           sha256sum "$aab" | tee android-release-aab-sha256.txt
           echo "Unsigned AAB only. Physical device verification, Play signing, and Play Console review remain required."
       - uses: actions/upload-artifact@v4
