@@ -93,6 +93,17 @@ def select_device():
     # Never include the ADB serial, raw phone logs, or identifying data in receipts.
 
 
+def center_of_android_bounds(value):
+    """Return button center from Android's standard [left,top][right,bottom] bounds."""
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", value)
+    if match is None:
+        raise AssertionError("Pixel Launcher Wait button has no valid bounds")
+    x1, y1, x2, y2 = map(int, match.groups())
+    if x2 <= x1 or y2 <= y1:
+        raise AssertionError("Pixel Launcher Wait button has empty bounds")
+    return (x1 + x2) // 2, (y1 + y2) // 2
+
+
 def dismiss_emulator_launcher_dialog():
     """Clear only a host Pixel Launcher ANR overlay; never dismiss a game ANR.
 
@@ -124,12 +135,8 @@ def dismiss_emulator_launcher_dialog():
                      if node.attrib.get("text") == "Wait"), None)
         if wait is None:
             raise AssertionError("Pixel Launcher ANR has no safe Wait action")
-        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
-                              wait.attrib.get("bounds", ""))
-        if bounds is None:
-            raise AssertionError("Pixel Launcher Wait button has no bounds")
-        x1, y1, x2, y2 = map(int, bounds.groups())
-        adb("shell", "input", "tap", (x1 + x2) // 2, (y1 + y2) // 2)
+        x, y = center_of_android_bounds(wait.attrib.get("bounds", ""))
+        adb("shell", "input", "tap", x, y)
         report["checks"]["hostLauncherWaitActions"] = (
             report["checks"].get("hostLauncherWaitActions", 0) + 1)
         time.sleep(1)

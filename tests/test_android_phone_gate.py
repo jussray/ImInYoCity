@@ -37,6 +37,12 @@ class PhoneIdentityGate(unittest.TestCase):
              patch.object(runner, "adb", side_effect=fake_adb):
             runner.select_device()
 
+    def test_launcher_wait_bounds(self):
+        self.assertEqual(runner.center_of_android_bounds("[100,700][500,900]"),
+                         (300, 800))
+        with self.assertRaisesRegex(AssertionError, "bounds"):
+            runner.center_of_android_bounds("not-bounds")
+
     def test_emulator_must_fail(self):
         props = {"ro.kernel.qemu": "1", "ro.boot.qemu": "0",
                  "ro.hardware": "ranchu", "ro.build.fingerprint": "google/sdk_gphone64",
