@@ -210,7 +210,11 @@ class DevTools:
         self.touch("touchStart", [(cx, cy, 1)])
         self.touch("touchEnd", [])
 
-    def closedef game_webview_sockets(unix_sockets, package_pids):
+    def close(self):
+        self.ws.close()
+
+
+def game_webview_sockets(unix_sockets, package_pids):
     """Accept only WebView DevTools sockets owned by the launched game process."""
     pids = {pid for pid in package_pids.split() if pid.isdecimal()}
     available = set(re.findall(r"@?(webview_devtools_remote_\d+)", unix_sockets))
@@ -249,9 +253,6 @@ def connect_webview():
             last_error = str(exc)
         time.sleep(2)
     raise AssertionError(f"No Android game WebView DevTools target after app launch: {last_error}")
-
-
-fter app launch: {last_error}")
 
 
 def until(condition, timeout=20, description="condition"):
