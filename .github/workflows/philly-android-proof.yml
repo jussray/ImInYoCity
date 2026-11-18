@@ -1,7 +1,7 @@
 name: Philly Android API 36 Proof
 on:
   push:
-    branches: [main]
+    branches: [main, verify/android-emulator-runtime]
     paths:
       - package.json
       - capacitor.config.json
@@ -10,6 +10,7 @@ on:
       - sw.js
       - index.html
       - assets/**
+      - tests/verify_android_emulator.py
       - .github/workflows/philly-android-proof.yml
   pull_request:
     paths:
@@ -20,6 +21,7 @@ on:
       - sw.js
       - index.html
       - assets/**
+      - tests/verify_android_emulator.py
       - .github/workflows/philly-android-proof.yml
   workflow_dispatch:
 permissions:
@@ -79,6 +81,13 @@ jobs:
           aab='android/app/build/outputs/bundle/release/app-release.aab'
           test -s "$aab"
           unzip -tq "$aab"
+          # Check that the release bundle carries the same game CI just built.
+          # A valid AAB containing stale or missing gameplay code must fail.
+          for source in index.html src/game.js src/styles.css sw.js; do
+            bundle_path="base/assets/public/$source"
+            unzip -Z1 "$aab" | grep -Fx "$bundle_path"
+            cmp "www/$source" <(unzip -p "$aab" "$bundle_path")
+          done
           sha256sum "$aab" | tee android-release-aab-sha256.txt
           echo "Unsigned AAB only. Physical device verification, Play signing, and Play Console review remain required."
       - uses: actions/upload-artifact@v4
@@ -89,3 +98,44 @@ jobs:
             android/app/build/outputs/bundle/release/app-release.aab
             android-release-aab-sha256.txt
           if-no-files-found: error
+
+  android-emulator-smoke:
+    name: Android emulator runtime and touch proof
+    needs: unsigned-android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: iminyocity-android-api36-debug-not-for-play
+          path: emulator-package
+      - name: Install Android WebView test libraries
+        run: |
+          python -m pip install --disable-pip-version-check Pillow websocket-client
+          python -m py_compile tests/verify_android_emulator.py
+          python -m unittest discover -s tests -p 'test_android_phone_gate.py'
+      - name: Allow hardware-accelerated Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Boot Android and test packaged game with touch
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: python3 tests/verify_android_emulator.py
+      - name: Preserve Android screenshots, logs, and checks
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iminyocity-android-emulator-runtime-proof
+          path: artifacts/android-emulator/*
+          if-no-files-found: warn
