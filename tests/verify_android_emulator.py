@@ -13,6 +13,7 @@ import subprocess
 import time
 import traceback
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from PIL import Image, ImageStat
@@ -92,7 +93,51 @@ def select_device():
     # Never include the ADB serial, raw phone logs, or identifying data in receipts.
 
 
+def dismiss_emulator_launcher_dialog():
+    """Clear only a host Pixel Launcher ANR overlay; never dismiss a game ANR.
+
+    The hosted emulator sometimes runs a slow Pixel Launcher process that
+    covers both screenshots while the game's own WebView is healthy.
+    Save the recovery count in the report; do not paper over game failures.
+    """
+    if options.physical:
+        return
+    for _ in range(2):
+        try:
+            adb("shell", "uiautomator", "dump",
+                "/sdcard/iminyocity-emulator-ui.xml", timeout=25)
+            xml = adb("shell", "cat", "/sdcard/iminyocity-emulator-ui.xml", timeout=12)
+            start = xml.find("<hierarchy")
+            if start < 0:
+                return
+            nodes = list(ET.fromstring(xml[start:]).iter("node"))
+        except (RuntimeError, TimeoutError, ET.ParseError, ValueError):
+            return
+        labels = [node.attrib.get("text", "") or node.attrib.get("content-desc", "")
+                  for node in nodes]
+        if not any("Pixel Launcher" in text and "responding" in text
+                   for text in labels):
+            if any("isn't responding" in text for text in labels):
+                raise AssertionError("Android ANR dialog is not from Pixel Launcher")
+            return
+        wait = next((node for node in nodes
+                     if node.attrib.get("text") == "Wait"), None)
+        if wait is None:
+            raise AssertionError("Pixel Launcher ANR has no safe Wait action")
+        bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+                              wait.attrib.get("bounds", ""))
+        if bounds is None:
+            raise AssertionError("Pixel Launcher Wait button has no bounds")
+        x1, y1, x2, y2 = map(int, bounds.groups())
+        adb("shell", "input", "tap", (x1 + x2) // 2, (y1 + y2) // 2)
+        report["checks"]["hostLauncherWaitActions"] = (
+            report["checks"].get("hostLauncherWaitActions", 0) + 1)
+        time.sleep(1)
+
+
 def screenshot(name):
+    if not options.physical:
+        dismiss_emulator_launcher_dialog()
     path = ART / f"{name}.png"
     raw = adb("exec-out", "screencap", "-p", binary=True, timeout=30)
     if len(raw) < 1500 or not raw.startswith(b"\x89PNG"):
