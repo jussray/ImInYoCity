@@ -38,6 +38,29 @@ Use Chromium/WebGL-enabled browser and Python Playwright for the browser test. T
 | Pause | P | PAUSE |
 | Sprint | Shift | Push the movement joystick near its outer edge |
 
+
+## Physical Android phone verification
+
+After installing Android Platform Tools and Python packages `Pillow` and
+`websocket-client` on your own computer, connect an authorized Android phone
+by USB with debugging permitted, then run:
+
+```bash
+adb devices
+python3 tests/verify_android_emulator.py --physical --apk /path/to/app-debug.apk
+# Add --serial DEVICE_ID only if multiple devices are connected.
+```
+
+The script rejects emulators and multiple unselected ADB devices, installs
+the **debug** APK on the selected phone, launches its Capacitor WebView,
+replays joystick/camera/mission/Sky Mode interactions, checks actual WebGL,
+and saves `artifacts/android-phone/{result.json,title.png,gameplay.png,controls-tested.png}`.
+The report contains an APK hash and non-unique model/Android version, but
+never a device serial or system logcat. Keep screenshots local until reviewed.
+WebView-injected gestures verify the app's touch handling; a person must still
+judge actual finger responsiveness, audio, device temperature and battery
+performance. A physical PASS is not Play Store approval or release signing.
+
 ## Android / Google Play gate
 
 `capacitor.config.json` and `package.json` are a packaging starting point, **not** evidence of an Android release. To submit to Google Play: verify app identifier ownership; install dependencies in an authorized build environment; run `npm run build`, `npx cap add android`, `npx cap sync`; test touch input, audio, WebGL, accessibility, power usage, and graphics on physical Android devices; generate app icons/splash and legal/ratings/privacy disclosures; produce and sign an AAB; perform Play Console policy and target-SDK review. Do not ship until reviewed and approved.

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Exercise the packaged Capacitor debug APK inside an Android emulator.
+"""Verify the packaged Capacitor APK on an emulator or explicitly selected phone.
 
-This test uses ADB for installation/screenshots and DevTools connected to the
-running Android WebView for real touch input and gameplay state inspection.
-It does not test a physical phone, release signing, or Play Store readiness.
+Default: CI Android emulator. Pass --physical --apk PATH on a connected Android
+phone to exercise the same WebView touch path and capture LOCAL evidence.
+Injected WebView events do not prove human-touch feel or Google Play readiness.
 """
+import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -17,19 +19,77 @@ from PIL import Image, ImageStat
 from websocket import create_connection
 
 ART = Path("artifacts/android-emulator")
-ART.mkdir(parents=True, exist_ok=True)
 PACKAGE = "company.jussco.iminyocity"
+ADB_SERIAL = None
+options = argparse.Namespace(physical=False, apk=None, serial=None)
 report = {"environment": "Android API 35 emulator, Capacitor debug APK",
           "physicalDevice": False, "checks": {}}
 
 
+def configure_cli():
+    global ART, options
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--physical", action="store_true",
+                        help="Require a real Android phone; reject all emulators")
+    parser.add_argument("--apk", type=Path, help="Path to the debug APK on this computer")
+    parser.add_argument("--serial", help="ADB serial to select; never written to the report")
+    options = parser.parse_args()
+    if options.physical and not options.apk:
+        parser.error("--physical requires --apk /path/to/app-debug.apk")
+    if options.apk and not options.physical:
+        parser.error("--apk is only supported with --physical")
+    ART = Path("artifacts/android-phone" if options.physical else "artifacts/android-emulator")
+    ART.mkdir(parents=True, exist_ok=True)
+
+
 def adb(*args, timeout=60, binary=False, check=True):
-    result = subprocess.run(["adb", *map(str, args)], stdout=subprocess.PIPE,
+    command = ["adb"] + (["-s", ADB_SERIAL] if ADB_SERIAL else []) + list(map(str, args))
+    result = subprocess.run(command, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, timeout=timeout)
     if check and result.returncode:
         raise RuntimeError(f"adb {' '.join(map(str, args))}: "
                            f"{result.stderr.decode(errors='replace')[-900:]}")
     return result.stdout if binary else result.stdout.decode(errors="replace").strip()
+
+
+def select_device():
+    """Choose exactly one authorized ADB device and reject emulators in phone mode."""
+    global ADB_SERIAL
+    connected = subprocess.run(["adb", "devices"], stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, timeout=15, check=True)
+    devices = []
+    for line in connected.stdout.decode(errors="replace").splitlines()[1:]:
+        fields = line.split()
+        if len(fields) >= 2 and fields[1] == "device":
+            devices.append(fields[0])
+    if options.serial:
+        if options.serial not in devices:
+            raise AssertionError("Selected ADB device is not connected and authorized")
+        ADB_SERIAL = options.serial
+    elif len(devices) == 1:
+        ADB_SERIAL = devices[0]
+    else:
+        raise AssertionError("Connect exactly one authorized ADB device or pass --serial")
+
+    if not options.physical:
+        return
+    qemu = (adb("shell", "getprop", "ro.kernel.qemu", check=False).strip().lower(),
+            adb("shell", "getprop", "ro.boot.qemu", check=False).strip().lower())
+    hardware = adb("shell", "getprop", "ro.hardware", check=False).lower()
+    fingerprint = adb("shell", "getprop", "ro.build.fingerprint", check=False).lower()
+    if (any(value in ("1", "true", "yes") for value in qemu) or
+            any(marker in hardware for marker in ("ranchu", "goldfish", "qemu")) or
+            any(marker in fingerprint for marker in ("generic", "emulator", "sdk_gphone"))):
+        raise AssertionError("Physical phone required: emulator detected; no phone proof recorded")
+    if not hardware.strip() or not fingerprint.strip():
+        raise AssertionError("Cannot establish physical device identity from Android properties")
+    report["physicalDevice"] = True
+    report["environment"] = "ADB-connected physical Android device; debug APK/WebView"
+    report["device"] = {
+        "model": adb("shell", "getprop", "ro.product.model", check=False),
+        "androidApi": adb("shell", "getprop", "ro.build.version.sdk", check=False),
+    }
+    # Never include the ADB serial, raw phone logs, or identifying data in receipts.
 
 
 def screenshot(name):
@@ -145,6 +205,18 @@ def gameplay(client):
     assert initial["started"] is False, "Game skipped title"
     assert client.evaluate("getComputedStyle(document.querySelector('#fatal')).display") == "none", "Fatal graphics overlay"
     report["checks"]["renderer"] = ("webgl" if initial["webgl"] else "fallback")
+    if options.physical:
+        assert initial["webgl"], "Physical phone must run actual WebGL; 2D fallback is not a GPU pass"
+        info = client.evaluate("""(() => {
+          const canvas = document.querySelector('#game');
+          const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+          if (!gl) return null;
+          const ext = gl.getExtension('WEBGL_debug_renderer_info');
+          return {webglVersion: gl.getParameter(gl.VERSION),
+                  renderer: gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER)};
+        })()""")
+        assert info and info["webglVersion"], "WebGL context not inspectable on phone"
+        report["checks"]["webglContext"] = info
     report["checks"]["title"] = True
     screenshot("title")
 
@@ -210,14 +282,30 @@ def gameplay(client):
     screenshot("controls-tested")
     assert state()["frames"] > start["frames"], "Game rendering stopped after input"
     report["checks"]["framesAdvanced"] = True
+    if options.physical:
+        start_frame = state()["frames"]
+        sampled_at = time.monotonic()
+        time.sleep(2)
+        measured = max(time.monotonic() - sampled_at, .01)
+        report["checks"]["jsRenderLoopTicksPerSecond"] = round(
+            (state()["frames"] - start_frame) / measured, 1)
+        # JS loop cadence is diagnostic, not a verified GPU frame-time measure.
 
 
 def main():
-    apk = list(Path("emulator-package").rglob("app-debug.apk"))
-    assert len(apk) == 1, f"Expected one packaged APK; found: {apk}"
-    print("APK:", apk[0], flush=True)
-    adb("install", "-r", apk[0], timeout=120)
-    adb("logcat", "-c", timeout=20)
+    if options.physical:
+        assert options.apk.is_file(), f"Android APK not found: {options.apk}"
+        apk = options.apk
+    else:
+        packages = list(Path("emulator-package").rglob("app-debug.apk"))
+        assert len(packages) == 1, f"Expected one packaged APK; found: {packages}"
+        apk = packages[0]
+    select_device()
+    report["checks"]["apkSha256"] = hashlib.sha256(apk.read_bytes()).hexdigest()
+    print("APK:", apk, flush=True)
+    adb("install", "-r", apk, timeout=120)
+    if not options.physical:
+        adb("logcat", "-c", timeout=20)
     launched = adb("shell", "am", "start", "-W",
                    "-n", PACKAGE + "/.MainActivity", timeout=60)
     assert "Error:" not in launched, f"Android launch rejected: {launched}"
@@ -230,22 +318,25 @@ def main():
     finally:
         client.close()
     assert adb("shell", "pidof", PACKAGE, check=False), "Game process crashed"
-    print("Android emulator proof:", json.dumps(report, indent=2), flush=True)
+    print("Android device proof:", json.dumps(report, indent=2), flush=True)
 
 
-try:
-    main()
-    report["status"] = "PASS"
-except Exception as exc:
-    report["status"] = "FAIL"
-    report["error"] = f"{type(exc).__name__}: {exc}"
-    traceback.print_exc()
-    raise
-finally:
+if __name__ == "__main__":
+    configure_cli()
     try:
-        (ART / "logcat.txt").write_text(
-            adb("logcat", "-d", "-v", "brief", "-t", "450", timeout=20),
-            encoding="utf-8")
-    except Exception:
-        pass
-    (ART / "result.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        main()
+        report["status"] = "PASS"
+    except Exception as exc:
+        report["status"] = "FAIL"
+        report["error"] = f"{type(exc).__name__}: {exc}"
+        traceback.print_exc()
+        raise
+    finally:
+        if not options.physical:
+            try:
+                (ART / "logcat.txt").write_text(
+                    adb("logcat", "-d", "-v", "brief", "-t", "450", timeout=20),
+                    encoding="utf-8")
+            except Exception:
+                pass
+        (ART / "result.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
