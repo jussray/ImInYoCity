@@ -1,0 +1,56 @@
+name: Philly iOS Simulator Proof
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - capacitor.config.json
+      - scripts/build.mjs
+      - src/**
+      - sw.js
+      - index.html
+      - assets/**
+      - .github/workflows/philly-ios-proof.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unsigned-ios-simulator:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install existing Capacitor packages
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install matching iOS adapter without changing package manifests
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @capacitor/ios@8.6.2
+      - name: Build existing game
+        run: npm run build
+      - name: Generate and sync iOS container
+        run: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Compile unsigned iOS Simulator app
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/ios-build" CODE_SIGNING_ALLOWED=NO build
+      - name: Verify simulator app and record digest
+        run: |
+          app="$RUNNER_TEMP/ios-build/Build/Products/Debug-iphonesimulator/App.app"
+          test -d "$app"
+          test -s "$app/App"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist"
+          ditto -c -k --sequesterRsrc --keepParent "$app" ios-simulator-unsigned.zip
+          shasum -a 256 ios-simulator-unsigned.zip | tee ios-simulator-sha256.txt
+          echo "Simulator-only unsigned proof. Not an iOS device build or App Store submission."
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: iminyocity-ios-simulator-unsigned-not-for-store
+          path: |
+            ios-simulator-unsigned.zip
+            ios-simulator-sha256.txt
+          if-no-files-found: error
