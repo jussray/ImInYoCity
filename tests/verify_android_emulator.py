@@ -150,7 +150,23 @@ def gameplay(client):
 
     client.tap("#playMuted")
     until(lambda: state() and state()["started"], description="touch-to-play")
+    until(lambda: client.evaluate(
+        "getComputedStyle(document.querySelector('#titlecover')).display") == "none",
+        description="title overlay disappeared")
+    initial_frames = state()["frames"]
+    until(lambda: state()["frames"] >= initial_frames + 8,
+          description="rendered gameplay frames")
+    time.sleep(.5)
     screenshot("gameplay")
+    # A screenshot taken before Android commits the new WebView frame can look
+    # like the title even though JavaScript reports that the game has started.
+    from PIL import ImageChops
+    with Image.open(ART / "title.png").convert("RGB") as title, \
+         Image.open(ART / "gameplay.png").convert("RGB") as gameplay_image:
+        difference = ImageChops.difference(title, gameplay_image)
+        changed = sum(ImageStat.Stat(difference).mean) / 3
+    assert changed > 12, f"Gameplay screenshot remained on title view: {changed:.1f}"
+    report["checks"]["gameplayVisualDifference"] = round(changed, 2)
     report["checks"]["touchPlay"] = True
 
     client.tap("#talkButton")
