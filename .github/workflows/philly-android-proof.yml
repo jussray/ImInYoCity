@@ -10,6 +10,7 @@ on:
       - sw.js
       - index.html
       - assets/**
+      - tests/verify_android_emulator.py
       - .github/workflows/philly-android-proof.yml
   pull_request:
     paths:
@@ -20,6 +21,7 @@ on:
       - sw.js
       - index.html
       - assets/**
+      - tests/verify_android_emulator.py
       - .github/workflows/philly-android-proof.yml
   workflow_dispatch:
 permissions:
