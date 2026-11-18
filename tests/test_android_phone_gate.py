@@ -43,6 +43,25 @@ class PhoneIdentityGate(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "bounds"):
             runner.center_of_android_bounds("not-bounds")
 
+    def test_webview_socket_belongs_to_game_process(self):
+        sockets = ("@webview_devtools_remote_1234\n"
+                   "@webview_devtools_remote_6789\n")
+        self.assertEqual(runner.game_webview_sockets(sockets, "6789"),
+                         ["webview_devtools_remote_6789"])
+        self.assertEqual(runner.game_webview_sockets(sockets, "9999"), [])
+        self.assertEqual(runner.game_webview_sockets(sockets, ""), [])
+
+    def test_webview_page_is_capacitor_localhost(self):
+        valid = {"type": "page", "url": "https://localhost/index.html",
+                 "webSocketDebuggerUrl": "ws://127.0.0.1:9222/devtools/page/xyz"}
+        self.assertTrue(runner.is_game_webview_page(valid))
+        self.assertFalse(runner.is_game_webview_page(
+            {**valid, "url": "https://unrelated.example/"}))
+        self.assertFalse(runner.is_game_webview_page(
+            {**valid, "url": "http://localhost/"}))
+        self.assertFalse(runner.is_game_webview_page(
+            {**valid, "type": "service_worker"}))
+
     def test_emulator_must_fail(self):
         props = {"ro.kernel.qemu": "1", "ro.boot.qemu": "0",
                  "ro.hardware": "ranchu", "ro.build.fingerprint": "google/sdk_gphone64",

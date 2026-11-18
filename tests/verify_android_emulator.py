@@ -13,6 +13,7 @@ import subprocess
 import time
 import traceback
 import urllib.request
+from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -213,26 +214,45 @@ class DevTools:
         self.ws.close()
 
 
+def game_webview_sockets(unix_sockets, package_pids):
+    """Accept only WebView DevTools sockets owned by the launched game process."""
+    pids = {pid for pid in package_pids.split() if pid.isdecimal()}
+    available = set(re.findall(r"@?(webview_devtools_remote_\d+)", unix_sockets))
+    return [f"webview_devtools_remote_{pid}" for pid in sorted(pids)
+            if f"webview_devtools_remote_{pid}" in available]
+
+
+def is_game_webview_page(page):
+    """Only inspect our Capacitor HTTPS localhost page, never another app."""
+    if page.get("type") != "page" or not page.get("webSocketDebuggerUrl"):
+        return False
+    try:
+        location = urlsplit(page.get("url", ""))
+        return location.scheme == "https" and location.hostname == "localhost"
+    except ValueError:
+        return False
+
+
 def connect_webview():
     until = time.monotonic() + 90
     last_error = ""
     while time.monotonic() < until:
         try:
+            package_pids = adb("shell", "pidof", PACKAGE, timeout=10, check=False)
             sockets = adb("shell", "cat", "/proc/net/unix", timeout=10)
-            matches = re.findall(r"@?(webview_devtools_remote_\d+)", sockets)
-            for socket_name in dict.fromkeys(matches):
+            for socket_name in game_webview_sockets(sockets, package_pids):
                 adb("forward", "tcp:9222", f"localabstract:{socket_name}", timeout=10)
                 with urllib.request.urlopen("http://127.0.0.1:9222/json", timeout=5) as response:
                     pages = json.load(response)
                 for page in pages:
-                    url = page.get("webSocketDebuggerUrl", "")
-                    if page.get("type") == "page" and url:
+                    if is_game_webview_page(page):
+                        url = page["webSocketDebuggerUrl"]
                         return DevTools(re.sub(r"^ws://[^/]+", "ws://127.0.0.1:9222", url))
-            last_error = "No debuggable WebView page yet"
+            last_error = "No Capacitor WebView belonging to game process yet"
         except Exception as exc:
             last_error = str(exc)
         time.sleep(2)
-    raise AssertionError(f"No Android WebView DevTools target after app launch: {last_error}")
+    raise AssertionError(f"No Android game WebView DevTools target after app launch: {last_error}")
 
 
 def until(condition, timeout=20, description="condition"):
