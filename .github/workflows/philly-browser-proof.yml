@@ -34,6 +34,12 @@ jobs:
         run: python tests/verify_camera_clearance.py
       - name: Playable boot when WebGL is missing or fails mid-init
         run: python tests/verify_fallback_boot.py
+      - name: Nova dialogue and mission card stay clear of controls (desktop, phone portrait/landscape)
+        run: python tests/verify_nova_dialogue.py
+      - name: HUD marker, level chip and compass stay clear of HUD and controls
+        run: python tests/verify_hud_layout.py
+      - name: Cinema View hides HUD, letterboxes, lowers camera and restores cleanly
+        run: python tests/verify_cinema_view.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

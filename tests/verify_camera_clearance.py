@@ -45,24 +45,25 @@ SWEEP = r"""(SKY_BYPASS) => {
  const hitAt=p=>vol.find(o=>p[0]>o.b[0]-near&&p[0]<o.b[3]+near&&p[1]>o.b[1]-near&&p[1]<o.b[4]+near&&p[2]>o.b[2]-near&&p[2]<o.b[5]+near);
  const save={x:player.x,y:player.y,z:player.z,sky:player.sky,yaw:cameraYaw,pitch:cameraPitch,orbit:cameraOrbitOffset};
  const r={rebuiltMatchesLive:same,states:0,buildingClips:0,decorClips:0,flyingInsideBuilding:0,byTag:{},examples:[]};
- for(const mode of ['walk','fly'])
- for(const y of (mode==='walk'?[0]:[3,6,10,16,24]))
+ for(const mode of ['walk','fly','cinema'])
+ for(const y of (mode==='fly'?[3,6,10,16,24]:[0]))
  for(let x=-69;x<=69;x+=3) for(let z=-69;z<=69;z+=3){
-   if(mode==='walk'?worldBlocksPlayer(x,z,0):(!SKY_BYPASS&&worldBlocksPlayer(x,z,y)))continue;  // unreachable
-   player.x=x;player.y=y;player.z=z;player.sky=mode==='fly';
+   if(mode!=='fly'?worldBlocksPlayer(x,z,0):(!SKY_BYPASS&&worldBlocksPlayer(x,z,y)))continue;  // unreachable
+   player.x=x;player.y=y;player.z=z;player.sky=mode==='fly';state.cinema=mode==='cinema';
    const body=vol.find(o=>!isDecor(o)&&x>o.b[0]&&x<o.b[3]&&z>o.b[2]&&z<o.b[5]&&y+.5>o.b[1]&&y+.5<o.b[4]);
    if(mode==='fly'&&body){r.flyingInsideBuilding++;if(r.examples.length<8)r.examples.push({kind:'player-inside',x,y,z,tag:body.tag});continue;}
    for(let k=0;k<6;k++){
-     cameraYaw=k*Math.PI/3;cameraPitch=.28;cameraOrbitOffset=0;r.states++;
-     const dist=player.sky?15:12,rise=player.sky?6.5:5.9;
-     const aim=[x,y+(player.sky?2.1:1.65),z];
+     cameraYaw=k*Math.PI/3;cameraPitch=mode==='cinema'?CAMERA_RIG.cinemaPitch:.28;cameraOrbitOffset=0;r.states++;
+     const rig=mode==='cinema'?['cinemaDist','cinemaRise','cinemaAim']:player.sky?['skyDist','skyRise','skyAim']:['walkDist','walkRise','walkAim'];
+     const dist=CAMERA_RIG[rig[0]],rise=CAMERA_RIG[rig[1]];
+     const aim=[x,y+CAMERA_RIG[rig[2]],z];
      const eye=visibleCamera(aim,cameraGoal(aim,dist,rise));
      const hit=hitAt(eye); if(!hit)continue;
      const key=(isDecor(hit)?'decor ':'BUILDING ')+hit.tag; r.byTag[key]=(r.byTag[key]||0)+1;
      if(isDecor(hit))r.decorClips++;else{r.buildingClips++;if(r.examples.length<8)r.examples.push({kind:'eye-inside',mode,x,y,z,yaw:+cameraYaw.toFixed(2),eye:eye.map(v=>+v.toFixed(2)),tag:hit.tag});}
    }
  }
- Object.assign(player,{x:save.x,y:save.y,z:save.z,sky:save.sky});cameraYaw=save.yaw;cameraPitch=save.pitch;cameraOrbitOffset=save.orbit;
+ state.cinema=false;Object.assign(player,{x:save.x,y:save.y,z:save.z,sky:save.sky});cameraYaw=save.yaw;cameraPitch=save.pitch;cameraOrbitOffset=save.orbit;
  return r;
 }"""
 
