@@ -154,7 +154,8 @@ with sync_playwright() as p:
             page.evaluate("window.dispatchEvent(new Event('blur'))")
             interrupted = page.evaluate('window.__imInYoCityDebug()')
             assert interrupted['inputX'] == 0 and interrupted['inputY'] == 0 and interrupted['basisYaw'] is None, interrupted
-            assert page.locator('#joy-knob').evaluate('(el) => el.style.transform') == 'translate(0,0)', 'Joystick knob stuck after app blur'
+            knob_xy = page.locator('#joy-knob').evaluate('''el => {const m = new DOMMatrixReadOnly(el.style.transform); return [m.m41, m.m42];}''')
+            assert all(abs(v) < .1 for v in knob_xy), f'Joystick knob stuck after app blur: {knob_xy}'
             multi_touch('touchEnd',[])
             multi_touch('touchStart',[touch_point(joy_x,joy_y,23)])
             multi_touch('touchMove',[touch_point(joy_x+40,joy_y,23)])
