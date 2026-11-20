@@ -142,6 +142,25 @@ with sync_playwright() as p:
             assert page.evaluate('window.__imInYoCityDebug().inputX')>.8, 'Releasing camera thumb stopped joystick'
             multi_touch('touchEnd',[])
             assert page.evaluate('window.__imInYoCityDebug().inputX')==0, 'Joystick stuck after two-touch release'
+            # Android regression: a second finger on the stick must not steal its pointer.
+            multi_touch('touchStart',[touch_point(joy_x,joy_y,21)])
+            multi_touch('touchMove',[touch_point(joy_x+40,joy_y,21)])
+            assert page.evaluate('window.__imInYoCityDebug().inputX') > .8, 'Primary touch did not steer'
+            multi_touch('touchStart',[touch_point(joy_x+40,joy_y,21),touch_point(joy_x-23,joy_y,22)])
+            assert page.evaluate('window.__imInYoCityDebug().inputX') > .8, 'Secondary touch stole the joystick'
+            multi_touch('touchEnd',[touch_point(joy_x-23,joy_y,22)])
+            assert page.evaluate('window.__imInYoCityDebug().inputX') > .8, 'Releasing secondary touch stopped primary thumb'
+            # WebView background/phone interruption must cancel the stick and orbit.
+            page.evaluate("window.dispatchEvent(new Event('blur'))")
+            interrupted = page.evaluate('window.__imInYoCityDebug()')
+            assert interrupted['inputX'] == 0 and interrupted['inputY'] == 0 and interrupted['basisYaw'] is None, interrupted
+            assert page.locator('#joy-knob').evaluate('(el) => el.style.transform') == 'translate(0,0)', 'Joystick knob stuck after app blur'
+            multi_touch('touchEnd',[])
+            multi_touch('touchStart',[touch_point(joy_x,joy_y,23)])
+            multi_touch('touchMove',[touch_point(joy_x+40,joy_y,23)])
+            assert page.evaluate('window.__imInYoCityDebug().inputX') > .8, 'Joystick failed to recover after app blur'
+            multi_touch('touchEnd',[])
+            assert page.evaluate('window.__imInYoCityDebug().inputX') == 0, 'Recovered joystick did not release'
         page.keyboard.press('f')
         flying=page.evaluate('window.__imInYoCityDebug()')
         assert flying['skyMode'], 'Sky Mode failed'
