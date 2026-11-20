@@ -191,6 +191,7 @@ const missions=[
 const dronePositions=[{x:25,z:-17,y:10},{x:35,z:-23,y:14},{x:18,z:-29,y:11}];
 const drones=dronePositions.map((d,i)=>({...d,id:i,disabled:false}));
 const controls={x:0,y:0,sprint:false,look:false,basisYaw:null};
+let resetPointerInputs=()=>{}; // installed by setupInput; releases mobile controls on pause/background
 const keys=new Set();
 const state={cinema:false,started:false,paused:false,stage:0,droneCount:0,pulses:0,audio:false,webgl:false,frame:0,zone:'CENTER CITY',time:0,noticeUntil:0};
 let cameraYaw=0,cameraPitch=.28,lookX=0,lookY=0,lookPointer=null,lookOverrideUntil=0,gl,staticArray,staticBuffer,dynamicBuffer,shader,viewProj,camPos=null,renderDt=1/60,audio=null,musicHandle=null,lastFrame=performance.now(),pulseAt=-100,ctx2d=null;
@@ -340,7 +341,7 @@ function reset(){closeDialogue();setCinema(false);player.x=-4;player.y=0;player.
 function updateJournal(){$('missionList').innerHTML=missions.slice(0,4).map((m,i)=>`<div class="mission-row ${i<state.stage?'done':''}"><b>${i<state.stage?'✓':i===state.stage?'◆':'○'} 0${i+1}</b><div><strong>${m.title}</strong><small>${m.help}</small></div></div>`).join('');}
 function openJournal(){if(!state.started)return;$('journal').classList.remove('hidden');state.paused=true;}
 function closeJournal(){$('journal').classList.add('hidden');state.paused=false;}
-function pause(){if(!state.started)return;state.paused=!state.paused;$('pause').classList.toggle('hidden',!state.paused);if(state.paused){controls.x=controls.y=0;controls.sprint=false;keys.clear();}}
+function pause(){if(!state.started)return;state.paused=!state.paused;$('pause').classList.toggle('hidden',!state.paused);if(state.paused){resetPointerInputs();keys.clear();}}
 function start(withAudio){if(state.started)return;state.started=true;state.paused=false;initAudio(withAudio);$('titlecover').classList.add('hidden');$('hud').classList.remove('hidden');measureHud();reset();toast('WELCOME TO PHILLY • FIND NOVA AT LOVE PARK');}
 function inputAxis(){const kx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);const ky=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);return {x:clamp(kx+controls.x,-1,1),y:clamp(ky+controls.y,-1,1)};}
 function angleTo(a,b,t){const d=Math.atan2(Math.sin(b-a),Math.cos(b-a));return a+clamp(d,-t,t);}
@@ -378,7 +379,7 @@ function updateHUD(){if(!state.started)return;if(player.sky!==skyHudShown){skyHu
 function animate(now){const elapsed=clamp((now-lastFrame)/1000,0,.25);lastFrame=now;renderDt=elapsed;try{for(let left=elapsed;left>0.000001;){const step=Math.min(left,.05);update(step);left-=step;}renderer();state.frame++;if(state.frame%2===0)updateHUD();}catch(err){console.error('Render failure',err);$('fatal').textContent='3D renderer error: '+err.message;$('fatal').classList.remove('hidden');state.webgl=false;}requestAnimationFrame(animate);}
 function setupInput(){const joy=$('moveJoystick'),knob=$('joy-knob');let joyId=null;
  function joyMove(e){const ring=$('joy-ring').getBoundingClientRect(),cx=ring.left+ring.width/2,cy=ring.top+ring.height/2;const x=e.clientX-cx,y=e.clientY-cy,limit=ring.width*.35,dist=Math.hypot(x,y),k=Math.min(1,limit/(dist||1));controls.x=clamp(x*k/limit,-1,1);controls.y=clamp(y*k/limit,-1,1);controls.sprint=dist>=limit*.9;knob.style.transform=`translate(${controls.x*limit}px,${controls.y*limit}px)`;}
- joy.addEventListener('pointerdown',e=>{e.preventDefault();joyId=e.pointerId;joy.setPointerCapture(joyId);joyMove(e);});joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;controls.x=controls.y=0;controls.sprint=false;knob.style.transform='translate(0,0)';};joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);joy.addEventListener('lostpointercapture',()=>{joyId=null;controls.x=controls.y=0;controls.sprint=false;knob.style.transform='translate(0,0)';});
+ joy.addEventListener('pointerdown',e=>{if(!state.started||state.paused||joyId!==null)return;e.preventDefault();joyId=e.pointerId;joy.setPointerCapture(joyId);joyMove(e);});joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;controls.x=controls.y=0;controls.sprint=false;knob.style.transform='translate(0,0)';};joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);joy.addEventListener('lostpointercapture',joyEnd); // only the owning finger can release the stick
  const look=$('lookArea');
  function lookDown(e){if(!state.started||state.paused||lookPointer!==null)return;e.preventDefault();lookPointer=e.pointerId;lookX=e.clientX;lookY=e.clientY;e.currentTarget.setPointerCapture(e.pointerId);}
  function lookMove(e){if(e.pointerId!==lookPointer)return;e.preventDefault();const delta=(e.clientX-lookX)*.008;cameraYaw+=delta;cameraPitch=clamp(cameraPitch+(e.clientY-lookY)*.004,-.35,.82);if(controls.basisYaw!==null)controls.basisYaw+=delta;lookX=e.clientX;lookY=e.clientY;}
@@ -388,9 +389,21 @@ function setupInput(){const joy=$('moveJoystick'),knob=$('joy-knob');let joyId=n
   target.addEventListener('pointermove',lookMove);target.addEventListener('pointerup',lookEnd);target.addEventListener('pointercancel',lookEnd);
   target.addEventListener('lostpointercapture',lookEnd);
  }
+ resetPointerInputs=()=>{
+  const activeJoy=joyId,activeLook=lookPointer;
+  joyId=null;lookPointer=null;
+  controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;
+  knob.style.transform='translate(0,0)';
+  if(activeJoy!==null&&joy.hasPointerCapture(activeJoy))joy.releasePointerCapture(activeJoy);
+  if(activeLook!==null)for(const target of [look,canvas]){
+   if(target.hasPointerCapture(activeLook))target.releasePointerCapture(activeLook);
+  }
+  lookOverrideUntil=state.time+1.5; // retain the selected orbit after interruption
+ };
  $('dialogueContinue').addEventListener('click',closeDialogue);
 $('cinemaBtn').addEventListener('click',()=>setCinema(true));$('cinemaExit').addEventListener('click',()=>setCinema(false));
- window.addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('dialogue').classList.contains('hidden')){closeDialogue();return;}const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(!state.started){if(k==='enter')start(false);return;}if(e.repeat)return;if(k==='f')fly();if(k==='e')interact();if(k==='j')pulse();if(k===' '&&!player.sky)jump();if(k==='m')$('journal').classList.contains('hidden')?openJournal():closeJournal();if(k==='p')pause();if(k==='c')setCinema(!state.cinema);if(k==='escape'&&state.cinema)setCinema(false);});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();controls.x=controls.y=0;controls.sprint=false;controls.basisYaw=null;lookPointer=null;});
+ window.addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('dialogue').classList.contains('hidden')){closeDialogue();return;}const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k);if(!state.started){if(k==='enter')start(false);return;}if(e.repeat)return;if(k==='f')fly();if(k==='e')interact();if(k==='j')pulse();if(k===' '&&!player.sky)jump();if(k==='m')$('journal').classList.contains('hidden')?openJournal():closeJournal();if(k==='p')pause();if(k==='c')setCinema(!state.cinema);if(k==='escape'&&state.cinema)setCinema(false);});window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();resetPointerInputs();});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();resetPointerInputs();}});
  for(const [id,fn] of [['playSound',()=>start(true)],['playMuted',()=>start(false)],['skyButton',fly],['jumpButton',jump],['pulseButton',pulse],['talkButton',interact],['journalBtn',openJournal],['journalClose',closeJournal],['pauseBtn',pause],['resumeButton',pause],['restart',()=>{reset();closeJournal();toast('STORY RESTARTED');}],['audioBtn',()=>initAudio(!state.audio)]]){$(id).addEventListener('click',e=>{e.preventDefault();fn();});}
 }
 function boot(){updateJournal();try{init3D();}catch(err){console.warn('WebGL init',err);try{if(gl){const fresh=canvas.cloneNode(false);canvas.replaceWith(fresh);canvas=fresh;gl=null;}setupFallback();}catch(fatal){console.error(fatal);$('fatal').classList.remove('hidden');$('playSound').disabled=true;$('playMuted').disabled=true;}}setupInput();requestAnimationFrame(animate);
