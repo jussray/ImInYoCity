@@ -25,7 +25,10 @@ assembled = assembled.replace('<script type="module" src="./src/game.js"></scrip
 
 with sync_playwright() as p:
     chromium = os.getenv('CHROMIUM_PATH') or ('/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None)
-    launch_options = {'headless': True}
+    launch_options = {'headless': True, 'args': [
+        '--enable-webgl', '--ignore-gpu-blocklist', '--use-gl=angle',
+        '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
+    ]}
     if chromium:
         launch_options['executable_path'] = chromium
     browser = p.chromium.launch(**launch_options)
@@ -45,7 +48,9 @@ with sync_playwright() as p:
             facing = page.evaluate('''() => {const a=new Mesh(),b=new Mesh();humanoid(a,0,0,0,C.shirt,C.skin,0,0,1,0);humanoid(b,0,0,0,C.shirt,C.skin,Math.PI/2,0,1,0);const ext=m=>{let xs=[],zs=[];for(let i=0;i<m.data.length;i+=10){xs.push(m.data[i]);zs.push(m.data[i+2]);}return {x:Math.max(...xs)-Math.min(...xs),z:Math.max(...zs)-Math.min(...zs),finite:m.data.every(Number.isFinite)};};return {front:ext(a),side:ext(b)};}''')
             assert facing['front']['finite'] and facing['side']['finite'], facing
             assert abs(facing['front']['x']-facing['side']['x']) > .3, f'Avatar geometry did not rotate: {facing}'
-        assert initial['webgl'] or initial['fallback'], 'No renderer active'
+        assert initial['webgl'] is True, (
+            f"3D WebGL renderer required for gameplay proof; got {initial}"
+        )
         assert not initial['started'], 'Should begin with title overlay'
         assert page.locator('#gameTitle').is_visible()
         page.screenshot(path=str(ART / f'{kind}-title.png'), animations='disabled')
