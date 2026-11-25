@@ -39,6 +39,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          check-latest: true
+      - name: Verify Java4Shell-patched Temurin runtime
+        run: |
+          java -XshowSettings:properties -version 2>&1 | tee java-runtime.txt
+          grep -F 'java.runtime.version = 21.0.13.1+2' java-runtime.txt
       - uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
