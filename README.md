@@ -61,6 +61,10 @@ WebView-injected gestures verify the app's touch handling; a person must still
 judge actual finger responsiveness, audio, device temperature and battery
 performance. A physical PASS is not Play Store approval or release signing.
 
+## Release execution tracker
+
+See [docs/GOOGLE_PLAY_RELEASE_GATE.md](docs/GOOGLE_PLAY_RELEASE_GATE.md) for the active Android, gameplay, world-expansion, privacy and Google Play gates. The tracker distinguishes automated emulator evidence from physical-phone and store-review evidence.
+
 ## Android / Google Play gate
 
 `capacitor.config.json` and `package.json` are a packaging starting point, **not** evidence of an Android release. To submit to Google Play: verify app identifier ownership; install dependencies in an authorized build environment; run `npm run build`, `npx cap add android`, `npx cap sync`; test touch input, audio, WebGL, accessibility, power usage, and graphics on physical Android devices; generate app icons/splash and legal/ratings/privacy disclosures; produce and sign an AAB; perform Play Console policy and target-SDK review. Do not ship until reviewed and approved.
