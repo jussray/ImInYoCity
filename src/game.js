@@ -153,6 +153,30 @@ function cityHall(m){const x=-18,z=-18;cameraSolid(x,z,10,10,22);cameraSolid(x,z
 function market(m){const x=16,z=-16;cameraSolid(x,z,9,10,6.5);m.box(x,0,z,9,5,10,C.brick);m.box(x,5,z,10,1.2,11,C.gold);m.box(x,2,z+5.17,8,1.5,.12,C.cyan,.85);for(let i=-3;i<=3;i++)m.box(x+i*.98,.4,z+5.25,.45,1.9,.12,i%2?C.magenta:C.gold,.2);}
 function park(m){m.plane(-3,8,14,15,.13,C.grass);for(const [x,z] of [[-8,3],[-8,12],[2,3],[2,13]])tree(m,x,z,.8);m.box(-2.4,.1,8,4,.35,3,C.silver);m.box(-2.4,.45,8,3.6,.5,2.5,C.violet,.6);m.box(-2.4,.95,8,2.9,.25,2,C.gold,.7);}
 function bridge(m){const z=-28;const x0=42,x1=76;m.box((x0+x1)/2,4.4,z,x1-x0,.8,4.4,C.silver);for(const x of [48,68]){cameraSolid(x,z,4,2.3,20.7);m.box(x,0,z,1.1,20,1.1,C.silver);m.box(x,20,z,4,1.2,2.3,C.silver);for(const side of [-1,1])for(let i=0;i<7;i++){const xx=x+(side*i*2.4),yy=18-Math.sin(i/7*PI/2)*11;m.rod([x,20,z],[xx,Math.max(5,yy),z],.06,C.light,.25);}}m.box(59,4.4,z,32,.13,.18,C.cyan,.9);}
+function chinatownGate(m){
+  const x=-2,z=-43;
+  // The two piers are real collision volumes; the raised lintel stays clear overhead.
+  for(const px of [-5.4,1.4]){
+    cameraSolid(px,z,1.2,1.5,6.1);
+    m.box(px,0,z,1.2,1.5,6.1,C.brick);
+    m.box(px,2.4,z,1.42,.18,1.72,C.gold,.9);
+    m.orb(px,6.25,z,.34,C.cyan,1.4,4,6);
+  }
+  m.box(x,5.8,z,8.2,1.1,1.8,C.gold,1.1);
+  m.box(x,6.9,z,.75,1.2,1.2,C.cyan,1.6);
+  m.box(x,5.1,z,6.7,.25,1.9,C.magenta,.8);
+  for(let i=-2;i<=2;i++){
+    m.box(x+i*1.25,1.05,z+.82,.42,.8,.08,i%2?C.gold:C.cyan,.55);
+  }
+}
+function districtAt(x,z){
+  if(x>45)return 'DELAWARE RIVERFRONT';
+  if(z>19)return 'SOUTH PHILLY';
+  if(x>28)return 'OLD CITY';
+  if(z<-36&&x>-16&&x<14)return 'CHINATOWN';
+  if(x<-25)return 'UNIVERSITY CITY';
+  return 'CENTER CITY';
+}
 function makeCity(){const m=new Mesh();
   m.plane(0,0,240,240,-.22,C.grass);m.plane(60,0,25,240,-.13,C.water,.15);
   for(let i=-6;i<=6;i++){const p=i*12;m.box(p,-.1,0,3,.11,170,C.asphalt);m.box(0,-.095,p,172,.11,3,C.asphalt);for(let k=-7;k<=7;k++){const z=k*12+4;m.plane(p,z,.08,3,.02,C.lane,.3);const x=k*12+4;m.plane(x,p,3,.08,.025,C.lane,.3);}}
@@ -171,7 +195,7 @@ function makeCity(){const m=new Mesh();
   }
   for(let i=-6;i<=6;i++)for(let k=0;k<9;k++){const p=i*12,q=-56+k*14+hash01(i,k)*6,c=[C.magenta,C.cyan,C.gold][(i+k+60)%3],o=(hash01(k,i)-.5)*1.6;
     m.plane(p+o,q,.22,2.6+hash01(i+9,k)*2,.03,tint(c,.55),.55);m.plane(q,p+o,2.6+hash01(k+9,i)*2,.22,.035,tint(c,.55),.55);}
-  cityHall(m);market(m);park(m);bridge(m);
+  cityHall(m);market(m);park(m);bridge(m);chinatownGate(m);
   // Waterfront promenade, street murals, neon market district and the skyline beacon.
   m.box(45,-.02,0,2,.15,160,C.sidewalk);for(let z=-65;z<65;z+=11){streetlamp(m,44,z);m.box(45,.17,z,1,.55,1,C.dark);}
   cameraSolid(29,-28,8,8,12.15);m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);for(const [r,y,n] of [[2.7,13.1,16],[1.9,15.4,12],[1.3,17.6,10]])for(let k=0;k<n;k++){const a=k/n*2*PI;m.box(29+Math.cos(a)*r,y,-28+Math.sin(a)*r,.34,.09,.34,C.cyan,1.9);}
@@ -366,7 +390,7 @@ function update(dt){if(!state.started||state.paused)return;state.time+=dt;const 
  else{player.energy=Math.min(100,player.energy+6.5*dt);player.vy-=18*dt;const floor=groundAt(player.x,player.z,player.y);player.y=Math.max(floor,player.y+player.vy*dt);if(player.y===floor)player.vy=0;}
  if(state.stage===1&&distance2(player,missions[1].target)<5.5)stageUp();
  if(state.stage===2&&player.sky&&Math.hypot(player.x-29,player.z+28)<8&&player.y>7)stageUp();
- state.zone=player.z>19?'SOUTH PHILLY':player.x>28?'OLD CITY':player.x<-25?'UNIVERSITY CITY':'CENTER CITY';
+ state.zone=districtAt(player.x,player.z);
  }
 function minimap(){const cv=$('minimap'),ctx=cv.getContext('2d'),s=156,scale=1.1;ctx.clearRect(0,0,s,s);ctx.fillStyle='#0d1f34';ctx.fillRect(0,0,s,s);ctx.strokeStyle='#253d58';ctx.lineWidth=4;
  for(let p=-84;p<=84;p+=12){ctx.beginPath();ctx.moveTo(s/2+(p-player.x)*scale,0);ctx.lineTo(s/2+(p-player.x)*scale,s);ctx.stroke();ctx.beginPath();ctx.moveTo(0,s/2+(p-player.z)*scale);ctx.lineTo(s,s/2+(p-player.z)*scale);ctx.stroke();}
