@@ -79,16 +79,22 @@ with sync_playwright() as p:
         before = page.evaluate('window.__imInYoCityDebug()')
         if kind == 'desktop':
             page.keyboard.down('w')
-            page.wait_for_timeout(380)
+            page.wait_for_function(
+                "({z}) => window.__imInYoCityDebug().z < z - 1",
+                arg={'z': before['z']}, timeout=10000,
+            )
             page.keyboard.up('w')
             after=page.evaluate('window.__imInYoCityDebug()')
             assert after['z'] < before['z'] - 1, (before,after)
             # Regression: camera auto-follow must not steer a rightward strafe into a circle.
             straight_start=page.evaluate('window.__imInYoCityDebug()')
             page.keyboard.down('d')
-            page.wait_for_timeout(1150)
-            straight_end=page.evaluate('window.__imInYoCityDebug()')
+            page.wait_for_function(
+                "({x}) => window.__imInYoCityDebug().x > x + 3",
+                arg={'x': straight_start['x']}, timeout=10000,
+            )
             page.keyboard.up('d')
+            straight_end=page.evaluate('window.__imInYoCityDebug()')
             assert straight_end['x']-straight_start['x'] > 3, (straight_start, straight_end)
             assert abs(straight_end['z']-straight_start['z']) < .8, 'Camera feedback bent keyboard movement into a spiral'
             assert straight_end['cameraYaw'] > .8 and straight_end['heading'] > 1.2, 'Avatar/camera did not follow movement'
