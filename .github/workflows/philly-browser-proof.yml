@@ -1,7 +1,7 @@
 name: Philly Game Browser Proof
 on:
   push:
-    branches: [main]
+    branches: [main, fix/3d-webgl-verification-20261126]
   pull_request:
   workflow_dispatch:
 permissions:
