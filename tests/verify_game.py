@@ -39,8 +39,10 @@ with sync_playwright() as p:
         page.wait_for_function('window.__imInYoCityDebug && window.__imInYoCityDebug().frames > 3', timeout=10000)
         initial = page.evaluate('window.__imInYoCityDebug()')
         if kind == 'desktop':
-            scene = page.evaluate('''() => {const a=makeCity(),b=dynamicGeometry();return {staticVertices:a.length/10,dynamicVertices:b.length/10,aligned:a.length%10===0&&b.length%10===0,finite:[...a.slice(0,3000)].every(Number.isFinite)};}''')
+            scene = page.evaluate('''() => {const a=makeCity(),b=dynamicGeometry();return {staticVertices:a.length/10,dynamicVertices:b.length/10,aligned:a.length%10===0&&b.length%10===0,finite:[...a.slice(0,3000)].every(Number.isFinite),districts:[districtAt(-2,-43),districtAt(-2,8),districtAt(-2,34),districtAt(52,0),districtAt(-42,0)],gatePillars:cameraSolids.filter(w=>w[0]>=-6.3&&w[3]<=2.3&&w[2]>-44&&w[5]<-42).length};}''')
             assert scene['aligned'] and scene['finite'] and scene['staticVertices'] > 30000 and scene['dynamicVertices'] > 1000, scene
+            assert scene['districts'] == ['CHINATOWN','CENTER CITY','SOUTH PHILLY','DELAWARE RIVERFRONT','UNIVERSITY CITY'], scene
+            assert scene['gatePillars'] >= 2, f'Chinatown Gate collision piers missing: {scene}'
             # Avatar vertices must rotate in world space (not just slide unrotated body boxes).
             facing = page.evaluate('''() => {const a=new Mesh(),b=new Mesh();humanoid(a,0,0,0,C.shirt,C.skin,0,0,1,0);humanoid(b,0,0,0,C.shirt,C.skin,Math.PI/2,0,1,0);const ext=m=>{let xs=[],zs=[];for(let i=0;i<m.data.length;i+=10){xs.push(m.data[i]);zs.push(m.data[i+2]);}return {x:Math.max(...xs)-Math.min(...xs),z:Math.max(...zs)-Math.min(...zs),finite:m.data.every(Number.isFinite)};};return {front:ext(a),side:ext(b)};}''')
             assert facing['front']['finite'] and facing['side']['finite'], facing
