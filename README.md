@@ -4,7 +4,7 @@
 
 ## Current playable slice
 
-- Procedural WebGL Philadelphia-inspired neighborhood with recognizable City Hall tower, Reading Terminal-inspired market, LOVE Park-inspired plaza, riverfront bridge, South Philly rowhouses, moving traffic and pedestrians.
+- Procedural WebGL Philadelphia-inspired neighborhood with recognizable City Hall tower, Reading Terminal-inspired market, LOVE Park-inspired plaza, Fairmount's Philadelphia Museum of Art silhouette, riverfront bridge, South Philly rowhouses, moving traffic and pedestrians.
 - Third-person character, joystick and camera follow/rotate, keyboard WASD, desktop mouse-look, jump, fly/land, and non-violent electric pulse.
 - Four story beats: Meet Nova, reach Reading Terminal, activate the rooftop relay, disable three roaming signal drones. Mission journal, map, reputation, audio, and pause/restart.
 - Responsive portrait and landscape UI, self-hosted graphics with no CDN or paid assets. Android packaging scaffold included but NOT built, signed, or Google Play approved.
