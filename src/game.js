@@ -182,7 +182,7 @@ function artMuseum(m){
   const x=-18,z=-56;
   // Stylized Philadelphia Museum of Art silhouette; all substantial structures block the player and camera.
   m.plane(x,z,31,25,.12,C.grass);
-  cameraSolid(x,z,17,9,11.5);
+  cameraSolid(x,z,17,14,11.5);
   m.box(x,0,z,16,7.4,8,C.stone);
   m.box(x,7.4,z,14,.8,7,C.tan);
   m.pyramid(x,8.2,z,14,3.2,C.stone);
