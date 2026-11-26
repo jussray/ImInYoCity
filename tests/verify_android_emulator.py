@@ -273,7 +273,9 @@ def gameplay(client):
         "window.__imInYoCityDebug && window.__imInYoCityDebug()")
     initial = until(lambda: (s if (s := state()) and s["frames"] > 4 else None),
                     timeout=35, description="running JavaScript game loop")
-    assert initial["webgl"] or initial["fallback"], f"No renderer: {initial}"
+    assert initial["webgl"] is True, (
+        f"Android gameplay proof requires the 3D WebGL renderer; got {initial}"
+    )
     assert initial["started"] is False, "Game skipped title"
     assert client.evaluate("getComputedStyle(document.querySelector('#fatal')).display") == "none", "Fatal graphics overlay"
     report["checks"]["renderer"] = ("webgl" if initial["webgl"] else "fallback")
