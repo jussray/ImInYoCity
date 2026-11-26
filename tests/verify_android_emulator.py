@@ -163,6 +163,7 @@ class DevTools:
     def __init__(self, url):
         self.ws = create_connection(url, timeout=20, suppress_origin=True)
         self.serial = 0
+        self.events = []
 
     def call(self, method, params=None):
         self.serial += 1
@@ -172,6 +173,12 @@ class DevTools:
         while time.monotonic() < deadline:
             response = json.loads(self.ws.recv())
             if response.get("id") != ident:
+                if response.get("method") in (
+                    "Runtime.exceptionThrown", "Runtime.consoleAPICalled",
+                    "Log.entryAdded",
+                ):
+                    self.events.append(response)
+                    self.events = self.events[-40:]
                 continue
             if "error" in response:
                 raise RuntimeError(f"DevTools {method}: {response['error']}")
@@ -271,8 +278,50 @@ def until(condition, timeout=20, description="condition"):
 def gameplay(client):
     state = lambda: client.evaluate(
         "window.__imInYoCityDebug && window.__imInYoCityDebug()")
-    initial = until(lambda: (s if (s := state()) and s["frames"] > 4 else None),
-                    timeout=35, description="running JavaScript game loop")
+    client.call("Runtime.enable")
+    client.call("Log.enable")
+    try:
+        initial = until(lambda: (s if (s := state()) and s["frames"] > 4 else None),
+                        timeout=45, description="running JavaScript game loop")
+    except AssertionError as exc:
+        diagnostics = client.evaluate("""(() => {
+          const fatal = document.querySelector('#fatal');
+          const probe = document.createElement('canvas');
+          let webgl = null;
+          try {
+            const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+            if (gl) webgl = {
+              version: gl.getParameter(gl.VERSION),
+              renderer: gl.getParameter(gl.RENDERER),
+            };
+          } catch (error) { webgl = {error: String(error)}; }
+          return {
+            url: location.href,
+            readyState: document.readyState,
+            debugHook: typeof window.__imInYoCityDebug,
+            debugState: window.__imInYoCityDebug?.() ?? null,
+            fatalDisplay: fatal ? getComputedStyle(fatal).display : 'missing',
+            fatalText: fatal?.textContent ?? '',
+            canvas: (() => {
+              const e = document.querySelector('#game');
+              return e ? {width:e.width,height:e.height,connected:e.isConnected} : null;
+            })(),
+            webglProbe: webgl,
+            scripts: [...document.scripts].map(s => ({type:s.type,src:s.src})),
+            gameResources: performance.getEntriesByType('resource')
+              .map(e => e.name).filter(n => n.includes('game.js')).slice(-5),
+          };
+        })()""")
+        report["checks"]["bootDiagnostics"] = diagnostics
+        report["checks"]["devtoolsEvents"] = client.events
+        try:
+            screenshot("boot-failure")
+        except Exception as screenshot_error:
+            report["checks"]["failureScreenshotError"] = str(screenshot_error)
+        raise AssertionError(
+            f"Android game loop did not start; diagnostics={diagnostics}; "
+            f"DevTools events={client.events[-12:]}"
+        ) from exc
     assert initial["webgl"] is True, (
         f"Android gameplay proof requires the 3D WebGL renderer; got {initial}"
     )
