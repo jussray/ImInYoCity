@@ -173,16 +173,43 @@ function districtAt(x,z){
   if(x>45)return 'DELAWARE RIVERFRONT';
   if(z>19)return 'SOUTH PHILLY';
   if(x>28)return 'OLD CITY';
+  if(z<-46&&x>-35&&x<0)return 'FAIRMOUNT';
   if(z<-36&&x>-16&&x<14)return 'CHINATOWN';
   if(x<-25)return 'UNIVERSITY CITY';
   return 'CENTER CITY';
+}
+function artMuseum(m){
+  const x=-18,z=-56;
+  // Stylized Philadelphia Museum of Art silhouette; all substantial structures block the player and camera.
+  m.plane(x,z,31,25,.12,C.grass);
+  cameraSolid(x,z,17,9,11.5);
+  m.box(x,0,z,16,7.4,8,C.stone);
+  m.box(x,7.4,z,14,.8,7,C.tan);
+  m.pyramid(x,8.2,z,14,3.2,C.stone);
+  for(const side of [-1,1]){
+    cameraSolid(x+side*10,z,5,8,5.6);
+    m.box(x+side*10,0,z,5,5.4,7.5,C.silver);
+    m.box(x+side*10,5.4,z,5.5,.35,8,C.gold);
+  }
+  // Classical front colonnade and illuminated pediment.
+  for(let i=-5;i<=5;i+=2){
+    cameraSolid(x+i,z+4.8,.48,.55,6.1);
+    m.box(x+i,0,z+4.8,.48,6.1,.55,C.white);
+    m.box(x+i,6.1,z+4.8,.68,.22,.72,C.gold,.55);
+  }
+  m.box(x,6.9,z+4.35,13,.45,.42,C.gold,.7);
+  // Broad approach terraces make the museum read clearly from street level.
+  m.box(x,.12,z+6.2,13,.28,2.2,C.stone);
+  m.box(x,.34,z+7.7,15,.28,1.7,C.silver);
+  m.box(x,.56,z+9.0,17,.28,1.5,C.stone);
+  m.box(x,0,z+11.2,24,.12,3,C.sidewalk);
 }
 function makeCity(){const m=new Mesh();
   m.plane(0,0,240,240,-.22,C.grass);m.plane(60,0,25,240,-.13,C.water,.15);
   for(let i=-6;i<=6;i++){const p=i*12;m.box(p,-.1,0,3,.11,170,C.asphalt);m.box(0,-.095,p,172,.11,3,C.asphalt);for(let k=-7;k<=7;k++){const z=k*12+4;m.plane(p,z,.08,3,.02,C.lane,.3);const x=k*12+4;m.plane(x,p,3,.08,.025,C.lane,.3);}}
   for(let i=-6;i<=5;i++)for(let j=-6;j<=5;j++){
     const x=i*12+6,z=j*12+6;
-    if(x>45 || (x>-13&&x<5&&z>-2&&z<18) || (x>-25&&x<-10&&z>-25&&z<-11) || (x>9&&x<24&&z>-23&&z<-9) || (x>22&&x<37&&z>-35&&z<-20))continue;
+    if(x>45 || (x>-13&&x<5&&z>-2&&z<18) || (x>-25&&x<-10&&z>-25&&z<-11) || (x>9&&x<24&&z>-23&&z<-9) || (x>22&&x<37&&z>-35&&z<-20) || (x>-30&&x<-6&&z>-66&&z<-42))continue;
     m.plane(x,z,8.6,8.6,.05,C.sidewalk);
     if((i+j)%5===0){tree(m,x-2.6,z-2.7,.65);streetlamp(m,x+3.1,z+3.1);}
     const district=z>21?'row':(z<-22?'tower':'regular');
@@ -195,7 +222,7 @@ function makeCity(){const m=new Mesh();
   }
   for(let i=-6;i<=6;i++)for(let k=0;k<9;k++){const p=i*12,q=-56+k*14+hash01(i,k)*6,c=[C.magenta,C.cyan,C.gold][(i+k+60)%3],o=(hash01(k,i)-.5)*1.6;
     m.plane(p+o,q,.22,2.6+hash01(i+9,k)*2,.03,tint(c,.55),.55);m.plane(q,p+o,2.6+hash01(k+9,i)*2,.22,.035,tint(c,.55),.55);}
-  cityHall(m);market(m);park(m);bridge(m);chinatownGate(m);
+  cityHall(m);market(m);park(m);bridge(m);chinatownGate(m);artMuseum(m);
   // Waterfront promenade, street murals, neon market district and the skyline beacon.
   m.box(45,-.02,0,2,.15,160,C.sidewalk);for(let z=-65;z<65;z+=11){streetlamp(m,44,z);m.box(45,.17,z,1,.55,1,C.dark);}
   cameraSolid(29,-28,8,8,12.15);m.box(29,0,-28,7,12,7,C.blue);m.box(29,12,-28,8,.65,8,C.gold);m.box(29,13,-28,.35,8,.35,C.cyan,1);m.orb(29,21,-28,1.2,C.cyan,2.2,6,10);for(const [r,y,n] of [[2.7,13.1,16],[1.9,15.4,12],[1.3,17.6,10]])for(let k=0;k<n;k++){const a=k/n*2*PI;m.box(29+Math.cos(a)*r,y,-28+Math.sin(a)*r,.34,.09,.34,C.cyan,1.9);}
