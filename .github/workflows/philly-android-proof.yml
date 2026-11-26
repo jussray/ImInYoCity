@@ -1,7 +1,7 @@
 name: Philly Android API 36 Proof
 on:
   push:
-    branches: [main, verify/android-emulator-runtime]
+    branches: [main, verify/android-emulator-runtime, fix/3d-webgl-verification-20261126]
     paths:
       - package.json
       - capacitor.config.json
