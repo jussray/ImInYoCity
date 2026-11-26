@@ -66,7 +66,7 @@ The current game is a stylized, deterministic procedural city, not a geographica
 - preserve existing mission routes and camera clearance;
 - add deterministic Playwright checks for new district names, landmark geometry and collision proxies.
 
-This increment adds a stylized Chinatown Gate with two collision-tested piers and adds Chinatown and Delaware Riverfront district labels. Future landmark work should follow the same geometry-plus-collision-plus-browser-test pattern.
+This increment adds a stylized Chinatown Gate with two collision-tested piers and adds Chinatown and Delaware Riverfront district labels. The next world increment adds Fairmount and a stylized Philadelphia Museum of Art silhouette, with dedicated collision volumes covering the central mass, pediment, wings and front colonnade. The browser scene test asserts the Fairmount district and landmark collision envelope; the full camera-clearance sweep must pass before the increment is considered stable. Future landmark work should follow the same geometry-plus-collision-plus-browser-test pattern.
 
 ## 4. Google Play preparation
 
