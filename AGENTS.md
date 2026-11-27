@@ -9,6 +9,6 @@ For Juss & Co. work: REALITY → FIX → PROOF → RISK → ROLLBACK → NEXT GA
 
 ## Portfolio cinematic composition standard (staged)
 
-Keep the standalone Philly After Dark identity and actual playable WebGL/2D fallback intact. Maintain cohesive cinematic scene, HUD, dialog, controls and responsive states without importing Steel City's Pittsburgh art.
+Keep the standalone Philly After Dark identity and actual playable WebGL/2D fallback intact. Build one cohesive cinematic composition across the scene, HUD, dialog, controls and responsive states without importing Steel City's Pittsburgh art.
 
 Preserve product-specific approved original design references and local instructions; Figma mockups are scaffolding. Require exact-head desktop/mobile visual screenshots, interaction and keyboard, reduced-motion and performance checks before a PASS. Keep runtime adoption, source changes, merges, deployment, publication, and spending as independent evidence and approval gates. No changes to auth, payment, data, agent authority, privacy or working game controls without separate scope. Draft reference: `jussray/founder-control-room/skills/cinematic-composition/SKILL.md` on `feat/cinematic-composition-contract-20261104`.
